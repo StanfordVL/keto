@@ -106,7 +106,7 @@ def grasps_to_inputs(images, grasps, crop_size, crop_scale):
         name='grasp_images')
 
     # grasp_images = visualize(grasp_images, images)
-
+    
     return OrderedDict([
         ('grasp_image', grasp_images), ('grasp_pose', grasp_depths)])
 
@@ -115,13 +115,17 @@ class Grasp4DofProblem(problem.Problem):
     """DexNet Problem."""
 
     def __init__(self,
-                 time_step_spec=None,
-                 action_spec=None,
+                 time_step_spec,
+                 action_spec,
+                 is_training,
                  crop_size=(32, 32),
                  crop_scale=1.0):
         """Initialize."""
-        self.time_step_spec = time_step_spec
-        self.action_spec = action_spec
+        super(Grasp4DofProblem, self).__init__(
+            time_step_spec=time_step_spec,
+            action_spec=action_spec,
+            is_training=is_training)
+
         self.crop_size = crop_size
         self.crop_scale = crop_scale
 
@@ -136,23 +140,14 @@ class Grasp4DofProblem(problem.Problem):
             self.crop_size,
             self.crop_scale)
 
-    @property
-    def input_tensor_spec(self):
-        """Tensor spec of the problem as an OrderedDict."""
         spec_list = [
             tf.TensorSpec([self.crop_size[0], self.crop_size[1], 1],
                           tf.float32, 'grasp_image'),
             tf.TensorSpec([1], tf.float32, 'grasp_pose'),
-        ]
-        return OrderedDict([(spec.name, spec) for spec in spec_list])
-
-    @property
-    def target_tensor_spec(self):
-        """Tensor spec of the problem as an OrderedDict."""
-        spec_list = [
             tf.TensorSpec([1], tf.int64, 'grasp_success'),
         ]
-        return OrderedDict([(spec.name, spec) for spec in spec_list])
+        self._spec = OrderedDict(
+            [(spec.name, spec) for spec in spec_list])
 
     def convert_trajectory(self, trajectory):
         """Convert trajectory."""
@@ -174,9 +169,9 @@ class Grasp4DofProblem(problem.Problem):
             ('grasp_success', trajectory.reward),
         ])
 
-    def preprocess(self, batch, is_training):
+    def preprocess(self, batch):
         """Proprocess the batch data."""
-        if is_training:
+        if self.is_training:
             grasp_image = batch['grasp_image']
             grasp_image = tf_depth_utils.gamma_noise(grasp_image)
             grasp_image = tf_depth_utils.gaussian_noise(grasp_image, prob=0.5)
@@ -189,7 +184,7 @@ class Grasp4DofProblem(problem.Problem):
         return tf.losses.sigmoid_cross_entropy(batch['grasp_success'],
                                                outputs['logit'])
 
-    def add_summaries(self, batch, outputs, is_training):
+    def add_summaries(self, batch, outputs):
         """Add summaries."""
         tf.summary.image('grasp_image', batch['grasp_image'], max_outputs=8)
 

@@ -60,11 +60,11 @@ class CameraObs(observation.Observation):
     def get_observation(self):
         """Returns the observation data of the current step."""
         images = self.camera.frames()
+        image = images[self.modality]
 
         if self.modality == 'rgb':
-            image = images[self.modality]
+            pass
         elif self.modality == 'depth' or self.modality == 'segmask':
-            image = images[self.modality]
             image = image[:, :, np.newaxis]
         else:
             raise ValueError('Unrecognized modality: %r.' % (self.modality))

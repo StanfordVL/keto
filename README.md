@@ -1,8 +1,4 @@
-# RoboVat
-
-<p align="center"><img width="80%" src="docs/brains-in-a-vat.gif" /></p>
-
-An object-oriented robot learning framework for both the simulation and the real world.
+# KeyPoint-based Task-Oriented Grasping
 
 ### Requirements
 
@@ -17,11 +13,13 @@ Run 4-dof grasping with random antipodal grasps:
 ```Shell
 python tools/run_env.py \
          --env Grasp4DofEnv \
+         --env_config configs/envs/grasp_4dof_env.yaml \
          --policy Grasp4DofRandomPolicy \
          --policy_config configs/policies/grasp_4dof_random_policy.yaml \
-         --problem Grasp4DofProblem \
+         --problem Grasp4DofProblem
+         --episodic 0 \
          --num_episodes 100 \
-         --debug 1 \
+         --debug 0 \
          --output episodes/grasp_4dof_random
 ```
 
