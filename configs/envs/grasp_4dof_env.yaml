@@ -1,0 +1,54 @@
+!include arm_env.yaml
+
+ACTION:
+  TYPE: '4DOF_ENDPOINTS'
+
+
+ARM:
+  # Move the arm out of the table.
+  OFFSTAGE_POSITIONS: [-1.5, -1.26, 0.00, 1.98, 0.00, 0.85, 3.3161]
+
+  # Move the arm above the table.
+  OVERHEAD_POSITIONS: [-0.73, -1.13, 0.82, 1.51, -0.33, 1.34, 1.87]
+
+  # The safe height to move the gripper above the table.
+  GRIPPER_SAFE_HEIGHT: 0.4
+
+  # The distance from the the end effector to the center of finger tips.
+  FINGER_TIP_OFFSET: 0.125
+
+  # If move to the overhead position after grasping.
+  MOVE_TO_OVERHEAD_AFTER_GRASP: 0
+
+
+SIM:
+  ARM:
+    POSE: [[0, 0, 0], [0, 0, 0]]
+
+  GROUND:
+    PATH: 'data/sim/planes/plane.urdf'
+    POSE: [[0, 0, -0.9], [0, 0, 0]]
+
+  TABLE:
+      PATH: 'data/sim/tables/table_grasp.urdf'
+      POSE: [[0.6, 0, -0.9], [0, 0, 0]]
+      HEIGHT_RANGE: [0.9, 0.9]
+
+  GRASPABLE:
+    PATHS: [
+    'data/sim/procedural/*0/*.urdf',
+    ]
+    POSE:
+      X: 0.1
+      Y: -0.2
+      Z: 0.3
+      ROLL: [0, 0]
+      PITCH: [0, 0]
+      YAW: [1.5, 1.5]
+    SCALE:
+      [1.0, 1.0]
+    USE_RANDOM_SAMPLE: 1
+    RESAMPLE_N_EPISODES: 0
+
+  # The maximum time steps 
+  MAX_GRASP_STEPS: 4000
