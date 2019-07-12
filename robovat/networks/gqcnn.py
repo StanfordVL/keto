@@ -7,7 +7,6 @@ from __future__ import print_function
 from collections import OrderedDict
 
 import tensorflow as tf
-import gin.tf
 from tf_agents.networks import network
 
 import numpy as np  # NOQA
@@ -142,7 +141,6 @@ def grasps_to_inputs(images, grasps, crop_size, crop_scale):
         ('grasp_image', grasp_images), ('grasp_pose', grasp_depths)])
 
 
-@gin.configurable
 class GQCNN(network.Network):
     """Grasp Quality Convolutional Neural Network (GQCNN)."""
     def __init__(self,

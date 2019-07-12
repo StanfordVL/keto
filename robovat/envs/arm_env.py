@@ -122,3 +122,6 @@ class ArmEnv(robot_env.RobotEnv):
                     -self.rotation_noise, self.rotation_noise)
 
             self.camera.set_calibration(intrinsics, translation, rotation)
+
+    def visualize(self, action, info):
+        pass

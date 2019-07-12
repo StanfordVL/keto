@@ -76,10 +76,11 @@ MOTION_PLANNING: 'moveit'
 
 
 # Path to the URDF file of the arm(without base, with gripper).
+ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm.urdf'
 # ARM_URDF: 'robot/rethink/sawyer_description/urdf/sawyer_arm_collision.urdf'
 # ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_hammer.urdf'
 # ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_stick.urdf'
-ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_push.urdf'
+# ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_push.urdf'
 
 # Path to the URDF file of the base.
 BASE_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_base.urdf'

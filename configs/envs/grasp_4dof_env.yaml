@@ -20,6 +20,7 @@ ACTION:
 
 SIM:
   ARM:
+    CONFIG: 'configs/robots/sawyer.yaml'
     POSE: [[0, 0, 0], [0, 0, 0]]
 
   GROUND:
@@ -27,9 +28,9 @@ SIM:
     POSE: [[0, 0, -0.9], [0, 0, 0]]
 
   TABLE:
-      PATH: 'data/sim/tables/table_grasp.urdf'
-      POSE: [[0.6, 0, -0.9], [0, 0, 0]]
-      HEIGHT_RANGE: [0.9, 0.9]
+    PATH: 'data/sim/tables/table_grasp.urdf'
+    POSE: [[0.6, 0, -0.9], [0, 0, 0]]
+    HEIGHT_RANGE: [0.9, 0.9]
 
   GRASPABLE:
     PATHS: [
