@@ -1,3 +1,5 @@
+MAX_STEPS: null
+
 KINECT2:
   DEPTH:
     HEIGHT: 424
@@ -9,6 +11,7 @@ KINECT2:
     INTRINSICS_NOISE: null
     TRANSLATION_NOISE: null
     ROTATION_NOISE: null
+    CROP: [150, 20, 350, 250]
 
 
 ARM:

@@ -1,8 +1,3 @@
-"""Top-down 4-DoF grasping environment.
-"""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import glob
 import random
@@ -11,15 +6,12 @@ import gym
 import numpy as np
 
 from robovat.envs import arm_env
-from robovat.envs.observations.camera_obs import CameraObs
-from robovat.envs.observations.camera_obs import CameraIntrinsicsObs
+from robovat.envs.observations import camera_obs
 from robovat.envs.reward_fns.grasp_reward import GraspReward
 from robovat.grasp import Grasp2D
 from robovat.math import Pose
 from robovat.math import get_transform
-from robovat.perception.camera import Kinect2
 from robovat.robots import sawyer
-from robovat.simulation.camera import BulletCamera
 from robovat.utils.logging import logger
 
 
@@ -47,17 +39,23 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 intrinsics_noise=self.config.KINECT2.DEPTH.INTRINSICS_NOISE,
                 translation_noise=self.config.KINECT2.DEPTH.TRANSLATION_NOISE,
                 rotation_noise=self.config.KINECT2.DEPTH.ROTATION_NOISE,
-                calibration_path=None)
+                calibration_path=None,
+                crop=self.config.KINECT2.DEPTH.CROP)
 
-        # TODO(kuanfang): Add camera parameters observation.
         observations = [
-            CameraObs(
-                name='depth',
+            camera_obs.CameraObs(
+                name=self.config.OBSERVATION.TYPE,
                 camera=self.camera,
-                modality='depth',
+                modality=self.config.OBSERVATION.TYPE,
                 max_visible_distance_m=None),
-            CameraIntrinsicsObs(
+            camera_obs.CameraIntrinsicsObs(
                 name='intrinsics',
+                camera=self.camera),
+            camera_obs.CameraTranslationObs(
+                name='translation',
+                camera=self.camera),
+            camera_obs.CameraRotationObs(
+                name='rotation',
                 camera=self.camera)
         ]
 
@@ -98,54 +96,22 @@ class Grasp4DofEnv(arm_env.ArmEnv):
             config=self.config,
             debug=self.debug)
 
-        # TODO(kuanfang): Correct this action space.
-        if self.config.ACTION.TYPE == '4DOF_CENTER':
+        if self.config.ACTION.TYPE == 'CUBOID':
+            low = self.config.ACTION.CUBOID.LOW + [0.0]
+            high = self.config.ACTION.CUBOID.HIGH + [2 * np.pi]
             self.action_space = gym.spaces.Box(
-                low=np.array([0.3, -0.3, 0.03, 0]),
-                high=np.array([0.6, 0.3, 0.1, 2 * np.pi]),
+                low=np.array(low),
+                high=np.array(high),
                 dtype=np.float32)
-        elif self.config.ACTION.TYPE == '4DOF_ENDPOINTS':
+        elif self.config.ACTION.TYPE == 'IMAGE':
+            height = self.camera.height
+            width = self.camera.width
             self.action_space = gym.spaces.Box(
-                -(2**16 - 1), 2**16 - 1, (5,), dtype=np.float32)
+                low=np.array([0, 0, 0, 0, -(2*24 - 1)]),
+                high=np.array([width, height, width, height, 2*24 - 1]),
+                dtype=np.float32)
         else:
             raise ValueError
-
-    def build_camera(self,
-                     height,
-                     width,
-                     intrinsics=None,
-                     translation=None,
-                     rotation=None,
-                     intrinsics_noise=None,
-                     translation_noise=None,
-                     rotation_noise=None,
-                     calibration_path=None):
-        """Build the camera sensor."""
-        if self.simulator:
-            self.camera = BulletCamera(simulator=self.simulator,
-                                       height=height,
-                                       width=width)
-        else:
-            self.camera = Kinect2(height=height,
-                                  width=width)
-
-        if calibration_path:
-            intrinsics, translation, rotation = self.camera.load_calibration(
-                calibration_path)
-
-        assert intrinsics is not None
-        assert translation is not None
-        assert rotation is not None
-
-        self.intrinsics = intrinsics
-        self.translation = translation
-        self.rotation = rotation
-        self.intrinsics_noise = intrinsics_noise
-        self.translation_noise = translation_noise
-        self.rotation_noise = rotation_noise
-
-        self.camera.set_calibration(
-            intrinsics, translation, rotation)
 
     def reset_scene(self):
         """Reset the scene in simulation or the real world.
@@ -180,6 +146,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                     self.graspable_path, scale)
         self.graspable = self.simulator.add_body(
                 self.graspable_path, pose, scale=scale, name=GRASPABLE_NAME)
+        logger.debug('Waiting for graspable objects to be stable...')
         self.simulator.wait_until_stable(self.graspable)
 
         # Reset camera.
@@ -211,58 +178,52 @@ class Grasp4DofEnv(arm_env.ArmEnv):
         """Execute the grasp action.
 
         Args:
-            action: A 4-dimentional vector represents [x, y, z, angle].
-
-        Returns:
-            grasp_success: True or False.
+            action: A 4-DoF grasp defined in the image space or the 3D space.
         """
-        if self.config.ACTION.TYPE == '4DOF_CENTER':
+        if self.config.ACTION.TYPE == 'CUBOID':
             x, y, z, angle = action
-        elif self.config.ACTION.TYPE == '4DOF_ENDPOINTS':
+        elif self.config.ACTION.TYPE == 'IMAGE':
             grasp = Grasp2D.from_vector(action, camera=self.camera)
             x, y, z, angle = grasp.as_4dof()
         else:
-            raise ValueError
+            raise ValueError(
+                'Unrecognized action type: %r' % (self.config.ACTION.TYPE))
 
-        pregrasp_pose = Pose(
-            [[x, y, self.config.ARM.GRIPPER_SAFE_HEIGHT], [0, np.pi, angle]])
-        grasp_pose = Pose(
+        start = Pose(
             [[x, y, z + self.config.ARM.FINGER_TIP_OFFSET], [0, np.pi, angle]])
-        self.grasp_procedure(pregrasp_pose, grasp_pose)
 
+        phase = 'initial'
+
+        # Handle the simulation robustness.
         if self.simulator:
-            self.simulator.wait_until_stable(self.graspable, 0.1, None)
+            num_action_steps = 0
 
-    def grasp_procedure(self, pregrasp_pose, grasp_pose):
-        """Handle the grasp action.
-        """
-        status = 'initial'
+        while(phase != 'done'):
 
-        while(status != 'done'):
-            old_status = status
+            if self.simulator:
+                self.simulator.step()
+                if phase == 'start':
+                    num_action_steps += 1
 
-            if status == 'initial':
-                if self.robot.is_limb_ready():
-                    status = 'overhead'
+            if self.is_phase_ready(phase, num_action_steps):
+                phase = self.get_next_phase(phase)
+                logger.debug('phase: %s', phase)
+
+                if phase == 'overhead':
                     self.robot.move_to_joint_positions(
                         self.config.ARM.OVERHEAD_POSITIONS)
+                    # self.robot.grip(0)
 
-            elif status == 'overhead':
-                if self.robot.is_limb_ready():
-                    status = 'pregrasp'
-                    self.robot.move_to_gripper_pose(pregrasp_pose)
+                elif phase == 'prestart':
+                    prestart = start.copy()
+                    prestart.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
+                    self.robot.move_to_gripper_pose(prestart)
 
-            elif status == 'pregrasp':
-                if self.robot.is_limb_ready():
-                    status = 'grasp'
-                    self.robot.move_to_gripper_pose(grasp_pose,
-                                                    straight_line=True)
+                elif phase == 'start':
+                    self.robot.move_to_gripper_pose(start, straight_line=True)
 
+                    # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
-                        # Resolve the stuck grasping motion.
-                        num_grasp_steps = 0
-
-                        # Modify frictions for robust simulation.
                         self.robot.l_finger_tip.set_dynamics(
                             lateral_friction=0.001,
                             spinning_friction=0.001)
@@ -272,35 +233,16 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                         self.table.set_dynamics(
                             lateral_friction=100)
 
-            elif status == 'grasp':
-                is_stuck = False
-                if self.simulator:
-                    num_grasp_steps += 1
-                    if num_grasp_steps >= self.config.SIM.MAX_GRASP_STEPS:
-                        is_stuck = True
-                        logger.debug('The grasping motion is stuck.')
-
-                contact_table = self.simulator.check_contact(
-                        self.robot.arm, self.table)
-
-                if contact_table:
-                    logger.debug('The gripper contacts the table')
-
-                if self.robot.is_limb_ready() or contact_table or is_stuck:
-                    status = 'close_gripper'
+                elif phase == 'end':
                     self.robot.grip(1)
 
-            elif status == 'close_gripper':
-                if self.robot.is_gripper_ready():
-                    status = 'postgrasp'
-                    if self.config.ARM.MOVE_TO_OVERHEAD_AFTER_GRASP:
-                        self.robot.move_to_joint_positions(
-                            self.config.ARM.OVERHEAD_POSITIONS)
-                    else:
-                        self.robot.move_to_gripper_pose(pregrasp_pose)
+                elif phase == 'postend':
+                    postend = self.robot.end_effector.pose
+                    postend.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
+                    self.robot.move_to_gripper_pose(postend, straight_line=True)
 
+                    # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
-                        # Modify frictions for robust simulation.
                         self.robot.l_finger_tip.set_dynamics(
                             lateral_friction=100,
                             rolling_friction=10,
@@ -311,16 +253,55 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                             spinning_friction=10)
                         self.table.set_dynamics(
                             lateral_friction=1)
+        
+    def get_next_phase(self, phase):
+        """Get the next phase of the current phase.
 
-            elif status == 'postgrasp':
-                if self.robot.is_limb_ready():
-                    status = 'done'
+        Args:
+            phase: A string variable.
 
+        Returns:
+            The next phase as a string variable.
+        """
+        phase_list = ['initial',
+                      'overhead',
+                      'prestart',
+                      'start',
+                      'end',
+                      'postend',
+                      'done']
+
+        if phase in phase_list:
+            i = phase_list.index(phase)
+            if i == len(phase_list):
+                raise ValueError('phase %r does not have a next phase.')
             else:
-                raise ValueError('Unrecognized control status: %s' % status)
+                return phase_list[i + 1]
+        else:
+            raise ValueError('Unrecognized phase: %r' % phase)
 
-            if status != old_status:
-                logger.debug('Status: %s', status)
+    def is_phase_ready(self, phase, num_action_steps):
+        """Check if the current phase is ready.
 
-            if self.simulator:
-                self.simulator.step()
+        Args:
+            phase: A string variable.
+            num_action_steps: Number of steps in the `start` phase.
+
+        Returns:
+            The boolean value indicating if the current phase is ready.
+        """
+        if self.simulator:
+            if phase == 'start':
+                if num_action_steps >= self.config.SIM.MAX_ACTION_STEPS:
+                    logger.debug('The grasping motion is stuck.')
+                    return True
+
+            if phase == 'start' or phase == 'end':
+                if self.simulator.check_contact(self.robot.arm, self.table):
+                    logger.debug('The gripper contacts the table')
+                    return True
+
+        if self.robot.is_limb_ready() and self.robot.is_gripper_ready():
+            return True
+        else:
+            return False

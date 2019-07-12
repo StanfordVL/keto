@@ -88,7 +88,7 @@ def threshold_gradients(data, threshold):
     return data
 
 
-def apply_gamma_noise(data, gamma_shape=1000):
+def gamma_noise(data, gamma_shape=1000):
     """Apply multiplicative denoising to the images.
 
     Args:
@@ -116,10 +116,10 @@ def apply_gamma_noise(data, gamma_shape=1000):
         return new_images
 
 
-def apply_gaussian_noise(data,
-                         prob=0.5,
-                         rescale_factor=4.0,
-                         sigma=0.005):
+def gaussian_noise(data,
+                   prob=0.5,
+                   rescale_factor=4.0,
+                   sigma=0.005):
     """Add correlated Gaussian noise.
 
     Args:

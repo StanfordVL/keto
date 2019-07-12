@@ -1,19 +1,37 @@
-#!/usr/bin/env python
-
 """Provides data for the gym dataset.
 """
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+from collections import OrderedDict
 
 import tensorflow as tf
 
 slim = tf.contrib.slim
 
 
-# TODO(kuanfang): After we have more stuffs for learning, we should move this
-# file to a learning folder.
+def handle_feature(keys_to_features, items_to_handlers, name, spec):
+    shape = spec.shape
+    dtype = spec.dtype
+
+    if shape.ndims > 1:
+        # TODO(kuanfang): Remove `encoded` from the data and the code.
+        keys_to_features[name] = tf.FixedLenFeature(
+            [], tf.string)
+        handler = ImageHandler(name, 'raw', shape=shape,
+                               channels=None, dtype=tf.float32)
+    elif dtype.is_integer or dtype.is_unsigned or dtype.is_bool:
+        keys_to_features[name] = tf.FixedLenFeature(shape, tf.int64)
+        handler = slim.tfexample_decoder.Tensor(name, shape=shape)
+    elif dtype.is_floating:
+        keys_to_features[name] = tf.FixedLenFeature(shape, tf.float32)
+        handler = slim.tfexample_decoder.Tensor(name, shape=shape)
+    else:
+        raise ValueError('Unrecognized feature %s of shape %r and type %r.'
+                         % (name, shape, dtype))
+
+    items_to_handlers[name] = handler
 
 
 class ImageHandler(slim.tfexample_decoder.ItemHandler):
@@ -42,9 +60,6 @@ class ImageHandler(slim.tfexample_decoder.ItemHandler):
             repeated: if False, decodes a single image. If True, decodes a
                 variable number of image strings from a 1D tensor of strings.
         """
-        if not image_key:
-            image_key = 'image/encoded'
-
         super(ImageHandler, self).__init__([image_key])
         self._image_key = image_key
         self._image_format = image_format
@@ -96,12 +111,12 @@ class ImageHandler(slim.tfexample_decoder.ItemHandler):
         return image
 
 
-def get_dataset(config, path):
+def get_dataset(filename, problem):
     """Gets a dataset tuple with instructions for reading flowers.
 
     Args:
-        config: Configuration of the features.
-        path: Path to the files.
+        filename: Path to the files.
+        problem:
 
     Returns:
         A `Dataset` namedtuple.
@@ -110,58 +125,39 @@ def get_dataset(config, path):
     keys_to_features = dict()
     items_to_handlers = dict()
 
-    for name, (dtype, shape) in config.items():
-        if dtype == 'int64':
-            keys_to_features[name] = tf.FixedLenFeature(shape, tf.int64)
-            handler = slim.tfexample_decoder.Tensor(name, shape=shape)
-        elif dtype == 'float':
-            keys_to_features[name] = tf.FixedLenFeature(shape, tf.float32)
-            handler = slim.tfexample_decoder.Tensor(name, shape=shape)
-        elif dtype == 'raw':
-            keys_to_features['%s/encoded' % (name)] = tf.FixedLenFeature(
-                    [], tf.string)
-            keys_to_features['%s/format' % (name)] = tf.FixedLenFeature(
-                    [], tf.string)
-            handler = ImageHandler(
-                    '%s/encoded' % (name), 'raw',
-                    shape=shape, channels=None, dtype=tf.float32)
-        elif dtype == 'png':
-            keys_to_features['%s/encoded' % (name)] = tf.FixedLenFeature(
-                    [], tf.string)
-            keys_to_features['%s/format' % (name)] = tf.FixedLenFeature(
-                    [], tf.string)
-            handler = slim.tfexample_decoder.Image(
-                    '%s/encoded' % (name), '%s/format' % (name),
-                    shape=shape, channels=shape[-1])
+    for name, spec in problem.spec.items():
+        if isinstance(spec, OrderedDict):
+            for sub_key, sub_spec in spec.items():
+                sub_name = '%s/%s' % (name, sub_key)
+                handle_feature(
+                    keys_to_features, items_to_handlers, sub_name, sub_spec)
         else:
-            raise ValueError('Unrecognized feature type %s of key %s'
-                             % (dtype, name))
-
-        items_to_handlers[name] = handler
+            handle_feature(keys_to_features, items_to_handlers, name, spec)
 
     decoder = slim.tfexample_decoder.TFExampleDecoder(
         keys_to_features, items_to_handlers)
 
     return slim.dataset.Dataset(
-        data_sources=path,
+        data_sources=filename,
         reader=tf.TFRecordReader,
         decoder=decoder,
         num_samples=None,
         items_to_descriptions=None)
 
 
-def provide_batch(config, path, batch_size, num_threads=4, shuffle=True):
+def provide_batch(filename, problem, batch_size, num_threads=4, shuffle=True):
     """Provides a batch of images and corresponding labels.
     Args:
-        config: Configuration of the features.
-        path: Path to the files.
+        filename: Path to the files.
+        problem:
         batch_size: The batch size.
+        num_threads:
         shuffle: If shuffle the data.
 
     Returns:
         A batch dictionary mapping names to tensors.
     """
-    dataset = get_dataset(config, path)
+    dataset = get_dataset(filename, problem)
 
     provider = slim.dataset_data_provider.DatasetDataProvider(
             dataset,
@@ -170,7 +166,8 @@ def provide_batch(config, path, batch_size, num_threads=4, shuffle=True):
             common_queue_capacity=20 * batch_size,
             common_queue_min=10 * batch_size)
 
-    data = dict(zip(config.keys(), provider.get(config.keys())))
+    keys = list(problem.spec.keys())
+    data = dict(zip(keys, provider.get(keys)))
 
     batch = tf.train.batch(
             data,

@@ -1,0 +1,3 @@
+!include sawyer.yaml
+
+ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_push.urdf'

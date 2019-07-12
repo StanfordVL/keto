@@ -8,7 +8,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 
-def random_bernoulli(shape, prob):
+def _random_bernoulli(shape, prob):
     """Random Bernoulli variable.
 
     Args:
@@ -21,7 +21,7 @@ def random_bernoulli(shape, prob):
     return tf.less(tf.random_uniform(shape=shape, minval=0.0, maxval=1.0), prob)
 
 
-def apply_random_flip(tensor, prob=0.5):
+def random_flip(tensor, prob=0.5):
     """Apply random flipping to the images.
 
     Args:
@@ -32,9 +32,9 @@ def apply_random_flip(tensor, prob=0.5):
     """
     num_images = tf.shape(tensor)[0]
     shape = [num_images]
-    use_flip = random_bernoulli(shape, 0.5)
-    flip_up_down = random_bernoulli(shape, 0.5)
-    flip_left_right = random_bernoulli(shape, 0.5)
+    use_flip = _random_bernoulli(shape, 0.5)
+    flip_up_down = _random_bernoulli(shape, 0.5)
+    flip_left_right = _random_bernoulli(shape, 0.5)
 
     flipped_tensor = tf.where(
             flip_up_down,
@@ -52,7 +52,7 @@ def apply_random_flip(tensor, prob=0.5):
     return new_tensor
 
 
-def apply_gamma_noise(tensor, gamma_shape=1000):
+def gamma_noise(tensor, gamma_shape=1000):
     """Apply multiplicative denoising to the images.
 
     Args:
@@ -68,10 +68,10 @@ def apply_gamma_noise(tensor, gamma_shape=1000):
     return new_tensor
 
 
-def apply_gaussian_noise(tensor,
-                         prob=0.5,
-                         rescale_factor=4.0,
-                         sigma=0.02):
+def gaussian_noise(tensor,
+                   prob=0.5,
+                   rescale_factor=4.0,
+                   sigma=0.02):
     """Apply correlated Gaussian noise.
 
     Args:
@@ -90,7 +90,7 @@ def apply_gaussian_noise(tensor,
     noise = tf.image.resize_images(noise, [shape[1], shape[2]],
                                    method=tf.image.ResizeMethod.BICUBIC)
 
-    use_noise = random_bernoulli([shape[0], 1, 1, 1], 0.5)
+    use_noise = _random_bernoulli([shape[0], 1, 1, 1], 0.5)
     use_noise = tf.tile(use_noise, [1, shape[1], shape[2], shape[3]])
     pixel_greater_then_zero = tf.greater(tensor, 0.0)
 

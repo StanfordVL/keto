@@ -8,6 +8,7 @@ from tf_agents.policies import random_tf_policy
 from tf_agents.policies import policy_step
 
 from robovat.grasp import image_grasp_sampler
+from robovat.networks import GQCNN
 from robovat.policies import cem_policy
 
 nest = tf.contrib.framework.nest
@@ -36,7 +37,7 @@ class AntipodalGraspSampler(object):
             depth_grad_gaussian_sigma=config.SAMPLER.DEPTH_GRAD_GAUSSIAN_SIGMA,
             downsample_rate=config.SAMPLER.DOWNSAMPLE_RATE,
             max_rejection_samples=config.SAMPLER.MAX_REJECTION_SAMPLES,
-            boundary=config.SAMPLER.BOUNDARY,
+            crop=config.SAMPLER.CROP,
             min_dist_from_boundary=config.SAMPLER.MIN_DIST_FROM_BOUNDARY,
             min_grasp_dist=config.SAMPLER.MIN_GRASP_DIST,
             angle_dist_weight=config.SAMPLER.ANGLE_DIST_WEIGHT,
@@ -49,13 +50,15 @@ class AntipodalGraspSampler(object):
             gripper_width=config.GRIPPER_WIDTH,
             debug=debug)
 
-    def __call__(self, observation, policy_state, num_samples):
-        depth = tf.squeeze(observation['depth'], 0)
-        intrinsics = tf.squeeze(observation['intrinsics'], 0)
+    def __call__(self, time_step, num_samples, seed):
+        observation = nest.map_structure(lambda x: tf.squeeze(x, 0),
+                                         time_step.observation)
+        depth = observation['depth']
+        intrinsics = observation['intrinsics']
         grasps = tf.py_func(
             self._sampler.sample, [depth, intrinsics, num_samples], tf.float32)
         grasps = tf.reshape(
-            grasps, [num_samples] + self._action_shape.as_list())
+            grasps, [1, num_samples] + self._action_shape.as_list())
         return grasps
 
 
@@ -69,7 +72,7 @@ class Grasp4DofRandomPolicy(random_tf_policy.RandomTFPolicy):
                  config=None,
                  debug=False):
         self._sampler = AntipodalGraspSampler(
-            time_step_spec, action_spec, config)
+            time_step_spec, action_spec, config, debug=True)
         self._num_samples = 1
 
         super(Grasp4DofRandomPolicy, self).__init__(
@@ -78,12 +81,11 @@ class Grasp4DofRandomPolicy(random_tf_policy.RandomTFPolicy):
             policy_state_spec)
 
     def _action(self, time_step, policy_state, seed):
-
-        action = self._sampler(
-            time_step.observation,
-            policy_state,
-            self._num_samples)
-
+        actions = self._sampler(
+            time_step,
+            self._num_samples,
+            seed)
+        action = tf.squeeze(actions, 0)
         return policy_step.PolicyStep(action, policy_state)
 
 
@@ -91,26 +93,22 @@ class Grasp4DofCemPolicy(cem_policy.CemPolicy):
     """4-DoF grasping policy using CEM."""
 
     def __init__(self,
-                 time_step_spec=None,
-                 action_spec=None,
-                 critic_network=None,
-                 encoding_network=None,
-                 num_samples=64,
-                 num_elites=6,
-                 num_iterations=3,
+                 time_step_spec,
+                 action_spec,
                  config=None,
                  debug=False):
-
         initial_sampler = AntipodalGraspSampler(
-            time_step_spec, action_spec, config)
-
+            time_step_spec, action_spec, config, debug=False)
+        q_network = tf.make_template(
+            'GQCNN',
+            GQCNN,
+            create_scope_now_=True,
+            time_step_spec=time_step_spec,
+            action_spec=action_spec)
+        q_network = q_network()
         super(Grasp4DofCemPolicy, self).__init__(
             time_step_spec=time_step_spec,
             action_spec=action_spec,
-            policy_state_spec=None,
-            critic_network=critic_network,
-            encoding_network=encoding_network,
+            q_network=q_network,
             initial_sampler=initial_sampler,
-            num_samples=num_samples,
-            num_elites=num_elites,
-            num_iterations=num_iterations)
+            config=config)

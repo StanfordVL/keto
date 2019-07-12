@@ -143,6 +143,8 @@ class SawyerSim(sawyer.Sawyer):
 
         See the parent class.
         """
+        self._arm.reset_targets()
+
         if speed is None:
             speed = self.config.LIMB_MAX_VELOCITY_RATIO
 
@@ -258,13 +260,21 @@ class SawyerSim(sawyer.Sawyer):
 
     def move_along_gripper_path(self,
                                 poses,
-                                speed=None):
+                                speed=None,
+                                timeout=None,
+                                threshold=None):
         """Move the arm to follow a path of the gripper.
 
         See the parent class.
         """
         if speed is None:
             speed = self.config.LIMB_MAX_VELOCITY_RATIO
+
+        if timeout is None:
+            timeout = self.config.LIMB_TIMEOUT
+
+        if threshold is None:
+            threshold = self.config.LIMB_POSITION_THRESHOLD
 
         self._arm.reset_targets()
 
@@ -289,6 +299,8 @@ class SawyerSim(sawyer.Sawyer):
         kwargs = {
                 'link_ind': self._end_effector.index,
                 'link_poses': poses,
+                'timeout': timeout,
+                'threshold': threshold,
                 }
 
         robot_command = RobotCommand(

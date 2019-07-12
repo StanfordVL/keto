@@ -8,6 +8,7 @@ from __future__ import print_function
 import numpy as np
 import pybullet
 
+from robovat.math import Orientation
 from robovat.perception.camera import Camera
 
 
@@ -121,6 +122,10 @@ class BulletCamera(Camera):
                  simulator,
                  height=DEPTH_HEIGHT,
                  width=DEPTH_WIDTH,
+                 intrinsics=None,
+                 translation=None,
+                 rotation=None,
+                 crop=None,
                  near=NEAR_PLANE,
                  far=FAR_PLANE,
                  distance=1.0,
@@ -136,6 +141,10 @@ class BulletCamera(Camera):
             simulator: The simulator to render, as an instance of World.
             height: The height of the image.
             width: The width of the image.
+            intrinsics: The intrinsics matrix.
+            translation: The translation vector.
+            rotation: The rotation matrix.
+            crop: The cropping box as [y1, x1, y2, x2].
             near: The distance to the near plane.
             far: The distance to the far plane.
             distance: The distance from the camera to the object.
@@ -143,24 +152,25 @@ class BulletCamera(Camera):
                 rotate the rendered images by 180 degree.
         """
         self._simulator = simulator
-        self._height = height
-        self._width = width
         self._near = near
         self._far = far
         self._distance = distance
         self._upside_down = upside_down
 
+        self._render_height = height
+        self._render_width = width
+
+        super(BulletCamera, self).__init__(
+            height=height,
+            width=width,
+            intrinsics=intrinsics,
+            translation=translation,
+            rotation=rotation,
+            crop=crop)
+
     @property
     def simulator(self):
         return self._simulator
-
-    @property
-    def height(self):
-        return self._height
-
-    @property
-    def width(self):
-        return self._width
 
     @property
     def view_matrix(self):
@@ -175,7 +185,7 @@ class BulletCamera(Camera):
         """
         pass
 
-    def frames(self):
+    def _frames(self):
         """Render the world at the current time step.
 
         Returns:
@@ -186,21 +196,21 @@ class BulletCamera(Camera):
                 [width, height].
         """
         _, _, rgba, depth, segmask = pybullet.getCameraImage(
-                        height=self._height,
-                        width=self._width,
+                        height=self._render_height,
+                        width=self._render_width,
                         viewMatrix=self._view_matrix,
                         projectionMatrix=self._projection_matrix,
                         physicsClientId=self.simulator.physics.uid)
 
         rgba = np.array(rgba).astype('uint8')
-        rgba = rgba.reshape((self._height, self._width, 4))
+        rgba = rgba.reshape((self._render_height, self._render_width, 4))
         rgb = rgba[:, :, :3]
 
         depth = np.array(depth).astype('float32')
-        depth = depth.reshape((self._height, self._width))
+        depth = depth.reshape((self._render_height, self._render_width))
 
         segmask = np.array(segmask).astype('uint8')
-        segmask = segmask.reshape((self._height, self._width))
+        segmask = segmask.reshape((self._render_height, self._render_width))
 
         # TODO(kuanfang): This rotate the image so that it is consistent with
         # the real-world Kinect. Not sure if this is actually necessary.
@@ -232,16 +242,17 @@ class BulletCamera(Camera):
             translation: The translation vector.
             rotation: The rotation matrix.
         """
+        if intrinsics is not None:
+            intrinsics = np.array(intrinsics).reshape((3, 3))
+            self._projection_matrix = intrinsic_to_projection_matrix(
+                    intrinsics, self._render_height, self._render_width,
+                    self._near, self._far)
+
+        if translation is not None and rotation is not None:
+            translation = np.array(translation).reshape((3,))
+            rotation = Orientation(rotation).matrix3
+            self._view_matrix = extrinsic_to_view_matrix(
+                    translation, rotation, self._distance)
+
         super(BulletCamera, self).set_calibration(
                 intrinsics, translation, rotation)
-        self._update_project_matrix()
-        self._update_view_matrix()
-
-    def _update_project_matrix(self):
-        self._projection_matrix = intrinsic_to_projection_matrix(
-                self._intrinsics, self._height, self._width,
-                self._near, self._far)
-
-    def _update_view_matrix(self):
-        self._view_matrix = extrinsic_to_view_matrix(
-                self._translation, self._rotation, self._distance)

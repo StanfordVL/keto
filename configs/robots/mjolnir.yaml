@@ -1,0 +1,8 @@
+URDF: 'data/robots/mjolnir/mjolnir.urdf'
+
+MAX_FORCE: null
+
+DEFAULT_LINEAR_VELOCITY: 0.5
+DEFAULT_ANGULAR_VELOCITY: 1.57
+
+TIMEOUT: 1.0

@@ -29,7 +29,11 @@ class Orientation(object):
         self._quaternion = None
         self._matrix3 = None
 
-        if isinstance(value, Orientation):
+        if value is None:
+            self._euler = None
+            self._quaternion = None
+            self._matrix3 = None
+        elif isinstance(value, Orientation):
             if value.euler is not None:
                 self._euler = value.euler.copy()
             if value.quaternion is not None:

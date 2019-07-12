@@ -1,0 +1,232 @@
+!include arm_env.yaml
+
+DEBUG: 1
+
+
+MAX_STEPS: 10
+
+
+# Action
+ACTION:
+  CSPACE:
+    LOW: [0.4, -0.4, 0.115]
+    HIGH: [0.8, 0.4, 0.115]
+
+  NUM_WAYPOINTS: 5
+
+  MOTION:
+    TRANSLATION_X: 0.04
+    TRANSLATION_Y: 0.04
+    ROTATION: 0.31416
+    TIME: 0.1
+
+  MIN_DELTA_POSITION: 0.01
+  MIN_DELTA_ANGLE: 0.01
+
+  MAX_PLOTS: 8
+
+
+# Observation
+OBS:
+  NUM_POINTS: 256
+
+
+# Camera
+KINECT2:
+  DEPTH:
+    HEIGHT: 424
+    WIDTH: 512
+    DISTANCE: 1.0
+    INTRINSICS: [372.66, 0., 241.20, 0., 368.62, 214.19, 0., 0., 1.]
+    TRANSLATION: [0, -0.60, 1.5]
+    ROTATION: [-3.1415, 0, 1.5708]
+    INTRINSICS_NOISE: null
+    TRANSLATION_NOISE: null
+    ROTATION_NOISE: null
+    CROP: null
+
+
+# Simulation
+SIM:
+  MAX_ACTION_STEPS: 5000
+  STEPS_CHECK: 100
+
+  ARM:
+    CONFIG: 'configs/robots/sawyer_push.yaml'
+    POSE: [[0, 0, 0], [0, 0, 0]]
+
+  GROUND:
+    PATH: 'data/sim/planes/plane_ceramic.urdf'
+    POSE: [[0, 0, -0.9], [0, 0, 0]]
+
+  TABLE:
+      PATH: 'data/sim/tables/table_svl_wooden.urdf'
+      POSE: [[0.6, 0, -0.9], [0, 0, 0]]
+      HEIGHT_RANGE: [0.9, 0.9]
+
+  FENCE:
+      PATH: 'data/sim/envs/multi_stage/fence_svl_wooden.urdf'
+
+
+# Tasks.
+TASK: 
+
+  ################
+  # Insert Task
+  ################
+  INSERT: 
+    CONFIG_NAMES: [
+      'TARGET',
+      'OBSTACLE',
+      'OBSTACLE',
+    ]
+    MARGIN: 0.15
+
+    TARGET:
+      PATHS: [
+      'data/sim/envs/multi_stage/cylinder_large_r.urdf',
+      ]
+      POSE:
+        # X: [0.45, 0.75]
+        # Y: [0, 0.2]
+        X: [0.45, 0.75]
+        Y: [-0.1, 0.1]
+        Z: 0.3
+        ROLL: [0, 0]
+        PITCH: [0, 0]
+        YAW: [0, 3.14]
+      SCALE:
+        [1.5, 1.5]
+      MASS: 100.
+      FRICTION: 1.0
+
+    OBSTACLE:
+      PATHS: [
+      'data/sim/envs/multi_stage/cylinder_large_b.urdf',
+      ]
+      POSE:
+        X: [0.45, 0.75]
+        Y: [-0.1, 0.1]
+        Z: 0.3
+        ROLL: [0, 0]
+        PITCH: [0, 0]
+        YAW: [0, 3.14]
+      SCALE:
+        [1.5, 1.5]
+      MASS: 100.
+      FRICTION: 1.0
+
+  ################
+  # Cross Task
+  ################
+  CROSS:
+    CONFIG_NAMES: [
+      'TARGET',
+      'OBSTACLE',
+      'OBSTACLE',
+    ]
+    MARGIN: 0.15
+
+    TARGET:
+      PATHS: [
+      'data/sim/envs/multi_stage/cylinder_large_r.urdf',
+      ]
+      POSE:
+        X: 0.6
+        Y: 0.225
+        Z: 0.3
+        ROLL: [0, 0]
+        PITCH: [0, 0]
+        YAW: [0, 3.14]
+      SCALE:
+        [1.5, 1.5]
+      MASS: 100.
+      FRICTION: 1.0
+
+    OBSTACLE:
+      PATHS: [
+      'data/sim/envs/multi_stage/cylinder_large_grey.urdf',
+      ]
+      POSE:
+        X: [0.3, 0.8]
+        Y: [-0.4, 0.4]
+        Z: 0.3
+        ROLL: [0, 0]
+        PITCH: [0, 0]
+        YAW: [0, 3.14]
+      SCALE:
+        [1.5, 1.5]
+      MASS: 100.
+      FRICTION: 1.0
+
+  # CROSS:
+  #   CONFIG_NAMES: [
+  #     'TARGET',
+  #     'OBSTACLE',
+  #     'OBSTACLE',
+  #   ]
+  #   MARGIN: 0.15
+  #
+  #   TARGET:
+  #     PATHS: [
+  #     'data/sim/vhacd_parts/*/*.urdf',
+  #     ]
+  #     POSE:
+  #       X: 0.6
+  #       Y: 0.225
+  #       Z: 0.3
+  #       ROLL: [0, 0]
+  #       PITCH: [0, 0]
+  #       YAW: [0, 3.14]
+  #     SCALE:
+  #       [0.8, 1.2]
+  #     MASS: 50.
+  #     FRICTION: 1.0
+  #
+  #   OBSTACLE:
+  #     PATHS: [
+  #     'data/sim/vhacd_parts/*/*.urdf',
+  #     ]
+  #     POSE:
+  #       # X: [0.75, 0.8]
+  #       # Y: [-0.4, 0.]
+  #       # X: [0.45, 0.75]
+  #       # Y: [-0.375, 0.075]
+  #       X: [0.3, 0.8]
+  #       Y: [-0.4, 0.4]
+  #       Z: 0.3
+  #       ROLL: [0, 0]
+  #       PITCH: [0, 0]
+  #       YAW: [0, 3.14]
+  #     SCALE:
+  #       [0.8, 1.2]
+  #     MASS: 50.
+  #     FRICTION: 1.0
+
+  ################
+  # Data Collection
+  ################
+  DATA_COLLECTION: 
+    CONFIG_NAMES: [
+      'CYLINDER',
+      'CYLINDER',
+      'CYLINDER',
+    ]
+    MARGIN: 0.15
+
+    CYLINDER:
+      PATHS: [
+      'data/sim/envs/multi_stage/cylinder_large_r.urdf',
+      'data/sim/envs/multi_stage/cylinder_large_b.urdf',
+      ]
+      POSE:
+        X: [0.4, 0.8]
+        Y: [-0.4, 0.4]
+        Z: 0.3
+        ROLL: [0, 0]
+        PITCH: [0, 0]
+        YAW: [0, 3.14]
+      SCALE:
+        [1.5, 1.5]
+      MASS: 100.
+      FRICTION: 1.0

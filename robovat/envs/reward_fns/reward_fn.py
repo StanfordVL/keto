@@ -15,12 +15,10 @@ class RewardFn(object):
     def initialize(self, env):
         self.env = env
 
-    @abc.abstractmethod
     def on_episode_start(self):
         """Called at the start of each episode."""
         pass
 
-    @abc.abstractmethod
     def on_episode_end(self):
         """Called at the end of each episode."""
         pass

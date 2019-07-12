@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import abc
 import os
 
 import numpy as np
@@ -16,6 +17,35 @@ from robovat.math import Orientation
 class Camera(object):
     """Abstract base class for cameras.
     """
+
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self,
+                 height=None,
+                 width=None,
+                 intrinsics=None,
+                 translation=None,
+                 rotation=None,
+                 crop=None):
+        """Initialize.
+
+        Args:
+            height: The height of the image.
+            width: The width of the image.
+            intrinsics: The intrinsics matrix.
+            translation: The translation vector.
+            rotation: The rotation matrix.
+            crop: The cropping box as [y1, x1, y2, x2].
+        """
+        if crop is None:
+            self._height = height
+            self._width = width
+        else:
+            self._height = crop[2] - crop[0]
+            self._width = crop[3] - crop[1]
+
+        self._crop = crop
+        self.set_calibration(intrinsics, translation, rotation)
 
     def start(self):
         """Starts the camera stream.
@@ -44,6 +74,19 @@ class Camera(object):
             'image': The RGB image as an uint8 np array of [width, height, 3].
             'depth': The depth image as a float32 np array of [width, height].
             'segmask': None value.
+        """
+        images = self._frames()
+
+        if self._crop is not None:
+            for key in images:
+                images[key] = images[key][self._crop[0]:self._crop[2],
+                                          self._crop[1]:self._crop[3]]
+
+        return images
+
+    @abc.abstractmethod
+    def _frames(self):
+        """Get the latest set of frames.
         """
         raise NotImplementedError
 
@@ -80,9 +123,17 @@ class Camera(object):
             translation: The translation vector.
             rotation: The rotation matrix.
         """
-        self._intrinsics = np.array(intrinsics).reshape((3, 3))
-        self._translation = np.array(translation).reshape((3,))
-        self._rotation = Orientation(rotation).matrix3
+        if intrinsics is not None:
+            self._intrinsics = np.array(intrinsics).reshape((3, 3))
+            if self._crop is not None:
+                self._intrinsics[0, 2] -= self._crop[1]
+                self._intrinsics[1, 2] -= self._crop[0]
+
+        if translation is not None:
+            self._translation = np.array(translation).reshape((3,))
+
+        if rotation is not None:
+            self._rotation = Orientation(rotation).matrix3
 
     def project_point(self, point, is_world_frame=True):
         """Projects a point cloud onto the camera image plane.
@@ -126,10 +177,39 @@ class Camera(object):
 
         return point
 
+    def deproject_depth_image(self, image, is_world_frame=True):
+        """Deprojects an entire depth image into a 3D point cloud.
+
+        Args:
+            image: 2.5D depth image.
+            is_world_frame: True if the 3D point is defined in the world frame,
+                False if it is defined in the camera frame.
+
+        Returns:
+            point: The deprojected 3D point cloud.
+        """
+        num_points = np.prod(image.shape)
+        image_shape = [image.shape[0], image.shape[1]]
+        inds = np.indices(image_shape).reshape((2, -1))[::-1, :]
+        pixels = np.concatenate([inds, np.ones((1, num_points))], axis=0)
+        depth = np.tile(image.reshape((1, -1)), [3, 1])
+        pixels = pixels * depth
+        point_cloud = np.matmul(np.linalg.inv(self.intrinsics), pixels)
+
+        if is_world_frame:
+            point_cloud = self.pose.position.reshape(3, 1) + np.matmul(
+                    self.pose.matrix3,
+                    point_cloud)
+
+        return np.array(point_cloud.T)
+
     @property
-    def pose(self):
-        world_origin_in_camera = Pose([self._translation, self._rotation])
-        return world_origin_in_camera.inverse()
+    def height(self):
+        return self._height
+
+    @property
+    def width(self):
+        return self._width
 
     @property
     def intrinsics(self):
@@ -150,3 +230,8 @@ class Camera(object):
     @property
     def cy(self):
         return self.intrinsics[1, 2]
+
+    @property
+    def pose(self):
+        world_origin_in_camera = Pose([self._translation, self._rotation])
+        return world_origin_in_camera.inverse()

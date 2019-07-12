@@ -4,7 +4,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from robovat.utils.string_utils import snakecase_to_camelcase
+
+from tf_agents.environments import gym_wrapper
+from tf_agents.environments import wrappers
+
+from robovat import envs
 
 
 def load(env_name,
@@ -27,11 +31,8 @@ def load(env_name,
             default step limit defined in the environment's spec. No limit is
             applied if set to 0 or if there is no timestep_limit set in the
             environment's spec.
-        time_limit_wrapper: Wrapper that accepts (env, max_episode_steps) params
-            to enforce a TimeLimit. Usuaully this should be left as the default,
-            wrappers.TimeLimit.
         env_wrappers: Iterable with references to wrapper classes to use on the
-        gym_wrapped environment.
+            gym_wrapped environment.
         spec_dtype_map: A dict that maps gym specs to tf dtypes to use as the
             default dtype for the tensors. An easy way how to configure a custom
             mapping through Gin is to define a gin-configurable function that
@@ -40,15 +41,10 @@ def load(env_name,
     Returns:
         A PyEnvironmentBase instance.
     """
-    from robovat import envs
-    env_name = '%s_env' % (env_name)
-    env_class_name = snakecase_to_camelcase(env_name)
-    env_package = getattr(envs, env_name)
-    env_class = getattr(env_package, env_class_name)
+    env_class = getattr(envs, env_name)
     env = env_class(simulator=simulator,
                     config=config,
                     debug=debug)
-
     return wrap_env(
         env,
         discount=discount,
@@ -79,9 +75,10 @@ def wrap_env(gym_env,
         gym_env_wrappers: Iterable with references to wrapper classes to use
             directly on the gym environment.
         time_limit_wrapper: Wrapper that accepts (env, max_episode_steps) params
-            to enforce a TimeLimit. Usuaully this should be left as the default,
-            wrappers.TimeLimit.  env_wrappers: Iterable with references to
-            wrapper classes to use on the gym_wrapped environment.
+            to enforce a TimeLimit. Usually this should be left as the default,
+            wrappers.TimeLimit.
+        env_wrappers: Iterable with references to wrapper classes to use on the
+            gym_wrapped environment.
         spec_dtype_map: A dict that maps gym specs to tf dtypes to use as the
             default dtype for the tensors. An easy way how to configure a custom
             mapping through Gin is to define a gin-configurable function that
@@ -93,9 +90,6 @@ def wrap_env(gym_env,
     Returns:
         A PyEnvironmentBase instance.
     """
-    from tf_agents.environments import gym_wrapper
-    from tf_agents.environments import wrappers
-
     for wrapper in gym_env_wrappers:
         gym_env = wrapper(gym_env)
 

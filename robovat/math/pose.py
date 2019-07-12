@@ -33,7 +33,9 @@ class Pose(object):
     def __str__(self):
         return '[position: %g, %g, %g, euler: %g, %g, %g]' % (
                 self.x, self.y, self.z,
-                self.euler[0], self.euler[1], self.euler[2])
+                (self.euler[0] + np.pi) % (2 * np.pi) - np.pi,
+                (self.euler[1] + 0.5 * np.pi) % np.pi - 0.5 * np.pi,
+                (self.euler[2] + np.pi) % (2 * np.pi) - np.pi)
 
     def __getitem__(self, index):
         if index == 0:
@@ -42,6 +44,114 @@ class Pose(object):
             return self.orientation
         else:
             raise ValueError('The index of a Pose instance can only be 0 or 1.')
+
+    @property
+    def position(self):
+        return self._position
+
+    @property
+    def x(self):
+        return self._position.x
+
+    @property
+    def y(self):
+        return self._position.y
+
+    @property
+    def z(self):
+        return self._position.z
+
+    @property
+    def orientation(self):
+        return self._orientation
+
+    @property
+    def euler(self):
+        return self._orientation.euler
+
+    @property
+    def roll(self):
+        return self.euler[0]
+
+    @property
+    def pitch(self):
+        return self.euler[1]
+
+    @property
+    def yaw(self):
+        return self.euler[2]
+
+    @property
+    def quaternion(self):
+        return self._orientation.quaternion
+
+    @property
+    def matrix3(self):
+        return self._orientation.matrix3
+
+    @property
+    def matrix4(self):
+        matrix4 = np.eye(4)
+        matrix4[:3, :3] = self.matrix3
+        matrix4[:3, 3] = self.position
+        return matrix4
+
+    @position.setter
+    def position(self, value):
+        self._position = Point(value)
+
+    @x.setter
+    def x(self, value):
+        self._position.x = value
+
+    @y.setter
+    def y(self, value):
+        self._position.y = value
+
+    @z.setter
+    def z(self, value):
+        self._position.z = value
+
+    @orientation.setter
+    def orientation(self, value):
+        self._orientation = Orientation(value)
+
+    @euler.setter
+    def euler(self, value):
+        # When setting euler, orientation should be updated.
+        self._orientation = Orientation(value)
+
+    @roll.setter
+    def roll(self, value):
+        # When setting euler, orientation should be updated.
+        self._orientation = Orientation([value, self.pitch, self.yaw])
+
+    @pitch.setter
+    def pitch(self, value):
+        # When setting euler, orientation should be updated.
+        self._orientation = Orientation([self.roll, value, self.yaw])
+
+    @yaw.setter
+    def yaw(self, value):
+        # When setting euler, orientation should be updated.
+        self._orientation = Orientation([self.roll, self.pitch, value])
+
+    @quaternion.setter
+    def quaternion(self, value):
+        # When setting quaternion, orientation should be updated.
+        self._orientation = Orientation(value)
+
+    @matrix3.setter
+    def matrix3(self, value):
+        # When setting matrix3, orientation should be updated.
+        self._orientation = Orientation(value)
+
+    @matrix4.setter
+    def matrix4(self, value):
+        self._position = Point(value[:3, 3])
+        self._euler = Orientation(value[:3, :3]).euler
+        self._quaternion = Orientation(value[:3, :3]).quaternion
+        self._matrix3 = Orientation(value[:3, :3]).matrix3
 
     def inverse(self):
         """Get the inverse rigid transformation of the pose.
@@ -87,91 +197,10 @@ class Pose(object):
         Return:
             A numpy array of [2, 3].
         """
-        pose = [self.position, self.euler]
+        pose = np.r_[self.position, self.euler]
         return np.array(pose, dtype=np.float)
 
-    @property
-    def position(self):
-        return self._position
-
-    @property
-    def x(self):
-        return self._position.x
-
-    @property
-    def y(self):
-        return self._position.y
-
-    @property
-    def z(self):
-        return self._position.z
-
-    @property
-    def orientation(self):
-        return self._orientation
-
-    @property
-    def euler(self):
-        return self._orientation.euler
-
-    @property
-    def quaternion(self):
-        return self._orientation.quaternion
-
-    @property
-    def matrix3(self):
-        return self._orientation.matrix3
-
-    @property
-    def matrix4(self):
-        matrix4 = np.eye(4)
-        matrix4[:3, :3] = self.matrix3
-        matrix4[:3, 3] = self.position
-        return matrix4
-
-    @position.setter
-    def position(self, value):
-        self._position = Point(value)
-
-    @x.setter
-    def x(self, value):
-        self._position.x = value
-
-    @y.setter
-    def y(self, value):
-        self._position.y = value
-
-    @z.setter
-    def z(self, value):
-        self._position.z = value
-
-    @orientation.setter
-    def orientation(self, value):
-        self._orientation = Orientation(value)
-
-    @euler.setter
-    def euler(self, value):
-        # When setting euler, orientation should be updated.
-        self._orientation = Orientation(value)
-
-    @quaternion.setter
-    def quaternion(self, value):
-        # When setting quaternion, orientation should be updated.
-        self._orientation = Orientation(value)
-
-    @matrix3.setter
-    def matrix3(self, value):
-        # When setting matrix3, orientation should be updated.
-        self._orientation = Orientation(value)
-
-    @matrix4.setter
-    def matrix4(self, value):
-        self._position = Point(value[:3, 3])
-        self._euler = Orientation(value[:3, :3]).euler
-        self._quaternion = Orientation(value[:3, :3]).quaternion
-        self._matrix3 = Orientation(value[:3, :3]).matrix3
-
-    @ staticmethod
+    @staticmethod
     def uniform(x,
                 y,
                 z,

@@ -14,6 +14,18 @@ class Robot(object):
     """Base class for robots."""
     __metaclass__ = abc.ABCMeta
 
+    @abc.abstractmethod
+    def reboot(self):
+        """Reboot the robot.
+        """
+        pass
+
+    @abc.abstractmethod
+    def reset(self):
+        """Reset the robot.
+        """
+        pass
+
     @property
     def pose(self):
         raise NotImplementedError

@@ -1,6 +1,5 @@
-"""Parallel jaw grasps.
+"""Grasp classes.
 """
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -9,39 +8,6 @@ import numpy as np
 
 from robovat.math import get_transform
 from robovat.math import Pose
-
-
-class Grasp(object):
-    """Parallel-jaw grasp in image space.
-
-    """
-
-    def __init__(self, pose, width=0.0):
-        """Initialize.
-
-        Args:
-            pose: Pose of the grasp, with the center of the jaw tips as
-                the position and the orientation of the gripper as the
-                orientation.
-            width: Distance between the jaws in meters.
-        """
-        self.pose = pose
-        self.width = width
-
-    @property
-    def endpoints(self):
-        """Returns the two endpoints of jaws."""
-        offset = np.dot([float(self.width_pixel) / 2, 0., 0.],
-                        np.self.center.matrix3.T)
-        p1 = self.center.position + offset
-        p2 = self.center.position - offset
-        return p1, p2
-
-    @property
-    def width_pixel(self, camera_matrix):
-        """Width in pixels.
-        """
-        raise NotImplementedError
 
 
 class Grasp2D(object):
@@ -143,11 +109,39 @@ class Grasp2D(object):
     def vector(self):
         """Returns the feature vector for the grasp.
 
-        v = [p1, p2, depth], where p1 and p2 are the jaw locations in image
-        space.
+        v = [x1, y1, x2, y2, depth], where p1 = [x1, y1] and p2 = [x2, y2] are
+        the jaw locations in image space.
         """
         p1, p2 = self.endpoints
         return np.r_[p1, p2, self.depth]
+
+    @staticmethod
+    def from_vector(value, camera=None):
+        """Creates a Grasp2D instance from a feature and additional parameters.
+
+        Args:
+            value: Feature vector.
+            width: Grasp opening width, in meters.
+            camera: The camera sensor for projection and deprojection.
+        """
+        # Read feature vector.
+        p1 = value[:2]
+        p2 = value[2:4]
+        depth = value[4]
+
+        # project into pixel space
+        u1 = np.array([p1[1], p1[0]])
+        u2 = np.array([p2[1], p2[0]])
+        point_1 = camera.deproject_pixel(u1, depth, is_world_frame=False)
+        point_2 = camera.deproject_pixel(u2, depth, is_world_frame=False)
+        width = np.linalg.norm(point_1 - point_2)
+
+        # Compute center and angle.
+        center = (p1 + p2) / 2
+        axis = p2 - p1
+        angle = np.arctan2(axis[1], axis[0])
+
+        return Grasp2D(center, angle, depth, width, camera)
 
     def as_4dof(self):
         """Computes the 4-DOF pose of the grasp in the world frame.
@@ -164,46 +158,3 @@ class Grasp2D(object):
         angle = grasp_pose_in_world.euler[2]
 
         return [x, y, z, angle]
-
-    @staticmethod
-    def from_vector(value, width=0.0, camera=None):
-        """Creates a Grasp2D instance from a feature and additional parameters.
-
-        Args:
-            value: Feature vector.
-            width: Grasp opening width, in meters.
-            camera: The camera sensor for projection and deprojection.
-        """
-        # Read feature vector.
-        p1 = value[:2]
-        p2 = value[2:4]
-        depth = value[4]
-
-        # Compute center and angle.
-        center = (p1 + p2) / 2
-        axis = p2 - p1
-        angle = np.arctan2(axis[1], axis[0])
-
-        return Grasp2D(center, angle, depth, width, camera)
-
-    @staticmethod
-    def image_dist(g1, g2, alpha=1.0):
-        """Computes the distance between grasps in image space.
-
-        Euclidean distance with alpha weighting of angles
-
-        Args:
-            g1: First grasp.
-            g2: Second grasp.
-            alpha: Weight of angle distance (rad to meters).
-
-        Returns:
-            Distance between grasps.
-        """
-        # Point to point distances.
-        point_dist = np.linalg.norm(g1.center - g2.center)
-
-        # Axis distances.
-        axis_dist = np.arccos(g1.axis.dot(g2.axis))
-
-        return point_dist + alpha * axis_dist

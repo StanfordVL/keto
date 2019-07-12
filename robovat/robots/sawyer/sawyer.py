@@ -22,6 +22,8 @@ class Sawyer(robot.Robot):
         config: The configuartion as a dictionary.
         """
         self.config = config or self.default_config
+        if isinstance(self.config, str):
+            self.config = YamlConfig(self.config).as_easydict()
 
     @property
     def default_config(self):

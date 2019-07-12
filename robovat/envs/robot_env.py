@@ -10,9 +10,29 @@ import os.path
 
 import gym
 import gym.spaces
+import numpy as np
 
 from robovat.utils.string_utils import camelcase_to_snakecase
 from robovat.utils.yaml_config import YamlConfig
+from robovat.utils.logging import logger
+
+
+def get_property(config):
+    """Get a property given the config.
+
+    If the config is None, return None. If the config is a value, return the
+    value. Otherwise, the config must by a tuple or list represents low and high
+    values to sample the property from.
+    """
+    if config is None:
+        return None
+    elif isinstance(config, (int, float)):
+        return config
+    elif isinstance(config, (list, tuple)):
+        return np.random.uniform(low=config[0], high=config[1])
+    else:
+        raise ValueError('config %r of type %r is not supported.'
+                         % (config, type(config)))
 
 
 class RobotEnv(gym.Env):
@@ -50,6 +70,9 @@ class RobotEnv(gym.Env):
 
         self.action_space = None
 
+        self.obs_data = None
+        self.prev_obs_data = None
+
     @property
     def default_config(self):
         """Load the default configuration file."""
@@ -67,7 +90,7 @@ class RobotEnv(gym.Env):
     @property
     def num_episodes(self):
         """Number of episodes."""
-        return self._num_episodess
+        return self._num_episodes
 
     @property
     def num_steps(self):
@@ -109,17 +132,25 @@ class RobotEnv(gym.Env):
         for reward_fn in self.reward_fns:
             reward_fn.on_episode_start()
 
+        if self.config.DEBUG:
+            logger.debug('episode: %d', self.num_episodes)
+
+        self.obs_data = None
+        self.prev_obs_data = None
+        self._obs_step = None
         return self.get_observation()
 
     def step(self, action):
         """Take a step."""
-        if not self.action_space.contains(action):
-            raise ValueError('Invalid action: %r' % (action))
+        # TODO(kuanfang): What's going on?
+        # if not self.action_space.contains(action):
+        #     raise ValueError('Invalid action: %r' % (action))
 
         if self._is_done:
             raise ValueError('The environment is done. Forget to reset?')
 
         self.execute_action(action)
+        self._num_steps += 1
 
         observation = self.get_observation()
 
@@ -132,20 +163,35 @@ class RobotEnv(gym.Env):
             if termination:
                 self._is_done = True
 
+        reward = float(reward)
         self._episode_reward += reward
-        self._num_steps += 1
         
+        if self.config.MAX_STEPS is not None:
+            if self.num_steps >= self.config.MAX_STEPS:
+                self._is_done = True
+
+        logger.info('reward: %.3f', reward)
+
+        if self._is_done:
+            logger.info(
+                'episode_reward: %.3f, avg_episode_reward: %.3f',
+                self.episode_reward,
+                float(self.episode_reward) / (self._num_episodes + 1e-14),
+            )
+
         return observation, reward, self._is_done, None
 
     def get_observation(self):
         """Return the observation."""
-        observation = collections.OrderedDict()
+        if self._obs_step != self._num_steps:
+            self._obs_step = self._num_steps
+            self.prev_obs_data = self.obs_data
 
-        for obs in self.observations:
-            obs_data = obs.get_observation()
-            observation[obs.name] = obs_data
+            self.obs_data = collections.OrderedDict()
+            for obs in self.observations:
+                self.obs_data[obs.name] = obs.get_observation()
 
-        return observation
+        return self.obs_data
 
     @abc.abstractmethod
     def reset_scene(self):

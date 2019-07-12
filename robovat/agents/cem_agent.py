@@ -1,22 +1,16 @@
-"""A DQN Agents.
-Implements the DQN algorithm from
-"Human level control through deep reinforcement learning"
-    Mnih et al., 2015
-    https://deepmind.com/research/dqn/
-Implements the Double-DQN algorithm from
-"Deep Reinforcement Learning with Double Q-learning"
- Hasselt et al., 2015
- https://arxiv.org/abs/1509.06461
+"""A Cross-Entropy Method (CEM) Agent.
 """
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import tensorflow as tf
 
 from tf_agents.agents import tf_agent
+from tf_agents.agents.dqn.dqn_agent import DqnLossInfo
+from tf_agents.agents.dqn.dqn_agent import compute_td_targets
+from tf_agents.agents.dqn.dqn_agent import element_wise_huber_loss
 from tf_agents.environments import trajectory
 from tf_agents.policies import epsilon_greedy_policy
 from tf_agents.policies import greedy_policy
@@ -30,48 +24,9 @@ import gin.tf
 nest = tf.contrib.framework.nest
 
 
-class DqnLossInfo(
-        collections.namedtuple('DqnLossInfo', ('td_loss', 'td_error'))):
-    """DqnLossInfo is stored in the `extras` field of the LossInfo instance.
-    Both `td_loss` and `td_error` have a validity mask applied to ensure that
-    no loss or error is calculated for episode boundaries.
-    td_loss: The **weighted** TD loss (depends on choice of loss metric and
-        any weights passed to the DQN loss function.
-    td_error: The **unweighted** TD errors, which are just calculated as:
-        ```
-        td_error = td_targets - q_values
-        ```
-        These can be used to update Prioritized Replay Buffer priorities.
-        Note that, unlike `td_loss`, `td_error` may contain a time dimension
-        when training with RNN mode. For `td_loss`, this axis is averaged out.
-    """
-    pass
-
-
-# TODO(damienv): Definition of those element wise losses should not belong to
-# this file. Move them to utils/common or utils/losses.
-def element_wise_squared_loss(x, y):
-    return tf.losses.mean_squared_error(
-        x, y, reduction=tf.losses.Reduction.NONE)
-
-
-def element_wise_huber_loss(x, y):
-    return tf.losses.huber_loss(x, y, reduction=tf.losses.Reduction.NONE)
-
-
-def compute_td_targets(next_q_values, rewards, discounts):
-    return tf.stop_gradient(rewards + discounts * next_q_values)
-
-
 @gin.configurable
-class DqnAgent(tf_agent.TFAgent):
-    """A DQN Agent.
-    Implements the DQN algorithm from
-    "Human level control through deep reinforcement learning"
-        Mnih et al., 2015
-        https://deepmind.com/research/dqn/
-    TODO(kbanoop): Provide a simple g3doc explaining DQN and these parameters.
-    """
+class CemAgent(tf_agent.TFAgent):
+    """A Cross-Entropy Method (CEM) Agent."""
 
     def __init__(
             self,
@@ -80,6 +35,9 @@ class DqnAgent(tf_agent.TFAgent):
             q_network,
             optimizer,
             epsilon_greedy=0.1,
+            # Params for target network updates
+            target_update_tau=1.0,
+            target_update_period=1,
             # Params for training.
             td_errors_loss_fn=None,
             gamma=1.0,
@@ -89,6 +47,7 @@ class DqnAgent(tf_agent.TFAgent):
             debug_summaries=False,
             summarize_grads_and_vars=False):
         """Creates a DQN Agent.
+
         Args:
             time_step_spec: A `TimeStep` spec of the expected time_steps.
             action_spec: A nest of BoundedTensorSpec representing the actions.
@@ -98,6 +57,8 @@ class DqnAgent(tf_agent.TFAgent):
             epsilon_greedy: probability of choosing a random action in the
                 default epsilon-greedy collect policy (used only if a wrapper is
                 not provided to the collect_policy method).
+            target_update_tau: Factor for soft update of the target networks.
+            target_update_period: Period for soft update of the target networks.
             td_errors_loss_fn: A function for computing the TD errors loss. If
                 None, a default value of element_wise_huber_loss is used. This
                 function takes as input the target and the estimated Q values
@@ -108,6 +69,7 @@ class DqnAgent(tf_agent.TFAgent):
             debug_summaries: A bool to gather debug summaries.
             summarize_grads_and_vars: If True, gradient and network variable
                 summaries will be written during training.
+
         Raises:
             ValueError: If the action spec contains more than one action or
                 action spec minimum is not equal to 0.
@@ -127,7 +89,10 @@ class DqnAgent(tf_agent.TFAgent):
                     [spec.minimum for spec in flat_action_spec]))
 
         self._q_network = q_network
+        self._target_q_network = self._q_network.copy(name='TargetQNetwork')
         self._epsilon_greedy = epsilon_greedy
+        self._target_update_tau = target_update_tau
+        self._target_update_period = target_update_period
         self._optimizer = optimizer
         self._td_errors_loss_fn = td_errors_loss_fn or element_wise_huber_loss
         self._gamma = gamma
@@ -139,13 +104,11 @@ class DqnAgent(tf_agent.TFAgent):
         policy = q_policy.QPolicy(
                 time_step_spec, action_spec, q_network=self._q_network)
 
-        # TODO(kuanfang): What random policy should we use inside?
         collect_policy = epsilon_greedy_policy.EpsilonGreedyPolicy(
                 policy, epsilon=self._epsilon_greedy)
-
         policy = greedy_policy.GreedyPolicy(policy)
 
-        super(DqnAgent, self).__init__(
+        super(CemAgent, self).__init__(
                 time_step_spec,
                 action_spec,
                 policy,
@@ -162,19 +125,22 @@ class DqnAgent(tf_agent.TFAgent):
         For each weight w_s in the q network, and its corresponding
         weight w_t in the target_q_network, a soft update is:
         w_t = (1 - tau) * w_t + tau * w_s
+
         Args:
             tau: A float scalar in [0, 1]. Default `tau=1.0` means hard update.
             period: Step interval at which the target network is updated.
+
         Returns:
             An operation that performs a soft update of the target network
-            parameters.
+                parameters.
         """
         with tf.name_scope('update_targets'):
 
             def update():
                 return common_utils.soft_variables_update(
                     self._q_network.variables,
-                    self._target_q_network.variables, tau)
+                    self._target_q_network.variables,
+                    tau)
 
             return common_utils.periodically(
                 update, period, 'periodic_update_targets')
@@ -184,8 +150,8 @@ class DqnAgent(tf_agent.TFAgent):
 
         # Remove time dim if we are not using a recurrent network.
         if not self._q_network.state_spec:
-            transitions = nest.map_structure(lambda x: tf.squeeze(x, [1]),
-                                             transitions)
+            transitions = nest.map_structure(
+                lambda x: tf.squeeze(x, [1]), transitions)
 
         time_steps, policy_steps, next_time_steps = transitions
         actions = policy_steps.action
@@ -219,8 +185,18 @@ class DqnAgent(tf_agent.TFAgent):
                 variables_to_train=lambda: self._q_network.trainable_weights,
         )
 
-        loss_info = nest.map_structure(
-                lambda t: tf.identity(t, name='loss_info'), loss_info)
+        if isinstance(loss_info, eager_utils.Future):
+            loss_info = loss_info()
+
+        # Make sure the update_targets periodically object is only created once.
+        if self._target_update_train_op is None:
+            with tf.control_dependencies([loss_info.loss]):
+                self._target_update_train_op = self._update_targets(
+                        self._target_update_tau, self._target_update_period)
+
+        with tf.control_dependencies([self._target_update_train_op]):
+            loss_info = nest.map_structure(
+                    lambda t: tf.identity(t, name='loss_info'), loss_info)
 
         return loss_info
 
@@ -242,12 +218,13 @@ class DqnAgent(tf_agent.TFAgent):
             actions: A batch of actions.
             next_time_steps: A batch of next timesteps.
             td_errors_loss_fn: A function(td_targets, predictions) to compute
-                the element wise loss.
+            the element wise loss.
             gamma: Discount for future rewards.
             reward_scale_factor: Multiplicative factor to scale rewards.
             weights: Optional scalar or elementwise (per-batch-entry) importance
                 weights. The output td_loss will be scaled by these weights, and
                 the final scalar loss is the mean of these values.
+
         Returns:
             loss: An instance of `DqnLossInfo`.
 
@@ -257,13 +234,20 @@ class DqnAgent(tf_agent.TFAgent):
         """
         with tf.name_scope('loss'):
             actions = nest.flatten(actions)[0]
-            # TODO(kuanfang)
             q_values, _ = self._q_network(time_steps.observation,
                                           time_steps.step_type,
                                           actions)
+
+            # TODO(kuanfang): Compute the next Q values using QT-Opt.
+            next_q_values = tf.zeros_like(q_values)
+            td_targets = compute_td_targets(
+                    next_q_values,
+                    rewards=reward_scale_factor * next_time_steps.reward,
+                    discounts=gamma * next_time_steps.discount)
+
             valid_mask = tf.cast(~time_steps.is_last(), tf.float32)
-            td_loss = valid_mask * td_errors_loss_fn(
-                next_time_steps.reward, q_values)
+            td_error = valid_mask * (td_targets - q_values)
+            td_loss = valid_mask * td_errors_loss_fn(td_targets, q_values)
 
             if nest_utils.is_batched_nested_tensors(
                     time_steps, self.time_step_spec(), num_outer_dims=2):
@@ -285,8 +269,14 @@ class DqnAgent(tf_agent.TFAgent):
                             var.name.replace(':', '_'), var)
 
             if self._debug_summaries:
+                diff_q_values = q_values - next_q_values
+                common_utils.generate_tensor_summaries('td_error', td_error)
                 common_utils.generate_tensor_summaries('td_loss', td_loss)
                 common_utils.generate_tensor_summaries('q_values', q_values)
+                common_utils.generate_tensor_summaries('next_q_values',
+                                                       next_q_values)
+                common_utils.generate_tensor_summaries('diff_q_values',
+                                                       diff_q_values)
 
             return tf_agent.LossInfo(
                 loss, DqnLossInfo(td_loss=td_loss, td_error=td_error))

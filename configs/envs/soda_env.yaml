@@ -1,0 +1,60 @@
+!include push_env.yaml
+
+DEBUG: 1
+
+MAX_STEPS: 10
+
+
+# Reward
+TASK_NAME: null
+
+
+# Observation
+OBS:
+  NUM_MOVABLES: 6
+  NUM_POINTS: 256
+
+
+# Simulation
+SIM:
+  MAX_ACTION_STEPS: 5000
+  STEPS_CHECK: 100
+
+  ARM:
+    CONFIG: 'configs/robots/sawyer_push.yaml'
+    POSE: [[0, 0, 0], [0, 0, 0]]
+
+  GROUND:
+    PATH: 'data/sim/planes/plane_ceramic.urdf'
+    POSE: [[0, 0, -0.9], [0, 0, 0]]
+
+  TABLE:
+      PATH: 'data/sim/tables/table_large.urdf'
+      POSE: [[0.6, 0, -0.9], [0, 0, 0]]
+      HEIGHT_RANGE: [0.9, 0.9]
+
+  FENCE:
+      PATH: 'data/sim/envs/multi_stage/fence.urdf'
+
+  # Type of movable.
+  MOVABLE: 'SODA'
+
+  # Soda objects.
+  SODA:
+    RANDOM_OBJECT: true
+    PATHS: [
+    # 'data/sim/simple/soda/model.urdf',
+    'data/sim/envs/multi_stage/cylinder.urdf',
+    ]
+    POSE:
+      X: [0.5, 0.7]
+      Y: [-0.2, 0.2]
+      Z: 0.3
+      ROLL: [0, 0]
+      PITCH: [0, 0]
+      YAW: [0, 3.14]
+    SCALE:
+      [1.0, 1.0]
+    MARGIN: 0.1
+    MASS: 100.
+    FRICTION: 1.0

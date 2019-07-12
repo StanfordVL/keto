@@ -11,7 +11,7 @@ from robovat.utils.logging import logger
 
 
 # These default constants are set for the Sawyer robot.
-TIMEOUT = 15.0
+TIMEOUT = 15.0  # TODO(kuanfang): Change it back to 15?
 JOINT_POSITION_THRESHOLD = 0.008726640
 JOINT_VELOCITY_THRESHOLD = 0.05
 POSITION_GAIN = 0.05
@@ -54,9 +54,10 @@ class ControllableBody(Body):
         self._max_joint_velocities = [
                 joint.max_velocity for joint in self.joints
                 ]
-        # self._neutral_joint_positions = None
+        self._neutral_joint_positions = None
 
         self._target_joint_positions = [None] * len(self.joints)
+        self._joint_start_time = [None] * len(self.joints)
         self._joint_stop_time = [None] * len(self.joints)
         self._joint_position_threshold = JOINT_POSITION_THRESHOLD
         self._joint_velocity_threshold = JOINT_VELOCITY_THRESHOLD
@@ -64,8 +65,12 @@ class ControllableBody(Body):
         self._target_link = None
         self._target_link_pose = None
         self._target_link_poses = []
+        self._ik_start_time = None
         self._ik_stop_time = None
         self._ik_num_steps = 0
+
+        self.position_gain = POSITION_GAIN
+        self.velocity_gain = VELOCITY_GAIN
 
     def is_ready(self, joint_inds=None):
         """Check if the body is ready.
@@ -108,18 +113,22 @@ class ControllableBody(Body):
             threshold: Joint position threshold in radians across each joint
                 when move is considered successful.
         """
-        stop_time = self.physics.time() + timeout
+        self.reset_targets()
+        start_time = self.physics.time()
+        stop_time = start_time + timeout
 
         if isinstance(joint_positions, (list, tuple)):
             for joint_ind, joint_position in enumerate(joint_positions):
                 if joint_position is not None:
                     self._target_joint_positions[joint_ind] = joint_position
+                    self._joint_start_time[joint_ind] = start_time
                     self._joint_stop_time[joint_ind] = stop_time
         elif isinstance(joint_positions, dict):
             for key, joint_position in joint_positions.items():
                 joint = self.get_joint_by_name(key)
                 joint_ind = joint.index
                 self._target_joint_positions[joint_ind] = joint_position
+                self._joint_start_time[joint_ind] = start_time
                 self._joint_stop_time[joint_ind] = stop_time
         else:
             raise ValueError
@@ -140,9 +149,12 @@ class ControllableBody(Body):
             threshold: Joint position threshold in radians across each joint
                 when move is considered successful.
         """
-        self._ik_stop_time = self.physics.time() + timeout
+        self.reset_targets()
+        self._ik_start_time = self.physics.time()
+        self._ik_stop_time = self._ik_start_time + timeout
         self._target_link = self.links[link_ind]
         self._target_link_pose = link_pose
+        self._target_link_poses = []
         self._joint_position_threshold = threshold
         self._ik_num_steps = 0
 
@@ -163,11 +175,15 @@ class ControllableBody(Body):
                 when move is considered successful.
         """
         assert isinstance(link_poses, list)
+        self.reset_targets()
 
-        self._ik_stop_time = self.physics.time() + timeout
+        self._ik_start_time = self.physics.time()
+        self._ik_stop_time = self._ik_start_time + timeout
         self._target_link = self.links[link_ind]
+        self._target_link_pose = None
         self._target_link_poses = link_poses
         self._joint_position_threshold = threshold
+        self._ik_num_steps = 0
 
     def set_neutral_joint_positions(self, joint_positions):
         """Set the neutral joint positions.
@@ -245,10 +261,10 @@ class ControllableBody(Body):
                     target_position=target_joint_positions[i],
                     target_velocity=target_joint_velocities[i],
                     max_velocity=max_joint_velocities[i],
-                    position_gain=POSITION_GAIN,
-                    velocity_gain=VELOCITY_GAIN)
+                    position_gain=self.position_gain,
+                    velocity_gain=self.velocity_gain)
 
-        # TODO(kuanfang): Debug position control.
+        # TODO(debug): Debug position control.
         # for i, joint_ind in enumerate(target_joint_inds):
         #     joint = self.joints[joint_ind]
         #     joint.position = target_joint_positions[i]
@@ -267,9 +283,9 @@ class ControllableBody(Body):
             is_safe = self.check_joint_safe(joint_ind)
 
             # Reset.
-            # if is_reached or is_timeout or (not is_safe):
             if is_reached or is_timeout or (not is_safe):
                 self._target_joint_positions[joint_ind] = None
+                self._joint_start_time[joint_ind] = None
                 self._joint_stop_time[joint_ind] = None
 
     def _update_ik(self):
@@ -305,10 +321,6 @@ class ControllableBody(Body):
                 for joint_ind in joint_inds:
                     self._target_joint_positions[joint_ind] = None
 
-        # current_joint_positions = [
-        #         self.joint_positions[joint_ind] for joint_ind in joint_inds
-        #         ]
-
         # If use Bullet IK (iterative), check if the IK result converges to the
         # current joint positions; if use other IK solvers, check if the
         # previously computed IK results has been reached.
@@ -325,7 +337,11 @@ class ControllableBody(Body):
         # velocities are zeros; otherwise velocities do not matter.
         if len(self._target_link_poses) == 0:
             joint_velocities = [0] * len(joint_inds)
+            self.position_gain = POSITION_GAIN
+            self.velocity_gain = VELOCITY_GAIN
         else:
+            self.position_gain = 1.0
+            self.velocity_gain = 0.0
             joint_velocities = [None] * len(joint_inds)
 
         # Check the stop conditions.
@@ -338,20 +354,22 @@ class ControllableBody(Body):
 
         # Warnings.
         if is_timeout:
-            logger.warn('Time out for the IK control of link %s.'
-                        % self._target_link.name)
+            logger.warning('Time out for the IK control of link %s.'
+                           % self._target_link.name)
 
         if is_converged or is_timeout:
             # Clear the IK target, if it is done.
             self._target_link_pose = None
             if len(self._target_link_poses) == 0:
                 self._target_link = None
+                self._ik_start_time = None
                 self._ik_stop_time = None
             return True
         else:
             # Set the position control.
             for joint_ind, joint_position in zip(joint_inds, joint_positions):
                 self._target_joint_positions[joint_ind] = joint_position
+                self._joint_start_time[joint_ind] = self._ik_start_time
                 self._joint_stop_time[joint_ind] = self._ik_stop_time
             return False
 
@@ -408,13 +426,14 @@ class ControllableBody(Body):
             current_position = self.joints[joint_ind].position
             delta_position = target_position - current_position
             current_velocity = self.joint_velocities[joint_ind]
-            logger.warn(
-                    'Time out (%.2f) for the position control of joint %s,'
-                    'with delta_position = %.3f, velocity = %.3f.'
-                    % (self._joint_stop_time[joint_ind],
-                       self.joints[joint_ind].name,
-                       delta_position,
-                       current_velocity))
+            logger.warning(
+                'Time out (%.2f) for the position control of joint %s,'
+                'with delta_position = %.3f, velocity = %.3f.'
+                % ((self._joint_stop_time[joint_ind] -
+                    self._joint_start_time[joint_ind]),
+                   self.joints[joint_ind].name,
+                   delta_position,
+                   current_velocity))
 
         return is_timeout
 
@@ -438,8 +457,8 @@ class ControllableBody(Body):
             is_safe = reaction_force_norm < max_force
 
             if not is_safe:
-                logger.warn('Joint %s has a reaction force %s, '
-                            'which is larger than the threshold %.2f.'
-                            % (joint_ind, reaction_force_norm, max_force))
+                logger.warning('Joint %s has a reaction force %s, '
+                               'which is larger than the threshold %.2f.'
+                               % (joint_ind, reaction_force_norm, max_force))
 
             return is_safe

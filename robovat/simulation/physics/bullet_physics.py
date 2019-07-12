@@ -60,6 +60,26 @@ class BulletPhysics(physics.Physics):
 
         self._gravity = None
 
+    #
+    # Properties
+    #
+
+    @property
+    def uid(self):
+        return self._uid
+
+    @property
+    def time_step(self):
+        return self._time_step
+
+    @property
+    def num_steps(self):
+        return self._num_steps
+
+    @property
+    def gravity(self):
+        return self._gravity
+
     def __del__(self):
         pybullet.disconnect(physicsClientId=self.uid)
         logger.info('Disconnected client %d to pybullet server.', self._uid)
@@ -394,6 +414,27 @@ class BulletPhysics(physics.Physics):
             kwargs['spinningFriction'] = spinning_friction
 
         pybullet.changeDynamics(**kwargs)
+
+    def set_body_color(self, body_uid, rgba, specular):
+        """Set the mass of the body.
+
+        Args:
+            body_uid: The body Unique ID.
+            rgba: A 4-dimensional float32 vector.
+            specular: A 4-dimensional float32 vector.
+        """
+        kwargs = dict()
+        kwargs['physicsClientId'] = self.uid
+        kwargs['objectUniqueId'] = body_uid
+        kwargs['linkIndex'] = -1
+
+        if rgba is not None:
+            kwargs['rgbaColor'] = rgba
+
+        if specular is not None:
+            kwargs['specularColor'] = specular
+
+        pybullet.changeVisualShape(**kwargs)
 
     #
     # Link
@@ -810,9 +851,9 @@ class BulletPhysics(physics.Physics):
         Returns:
             An instance of Pose.
         """
-        _, _, _, _, _, _, _, position, _, quaternion, _ = (
-                pybullet.getConstraintInfo(constraintUniqueId=constraint_uid,
-                                           physicsClientId=self.uid))
+        _, _, _, _, _, _, _, position, _, quaternion, _, _, _, _, _ = (
+            pybullet.getConstraintInfo(constraintUniqueId=constraint_uid,
+                                       physicsClientId=self.uid))
         return Pose([position, quaternion])
 
     def get_constraint_position(self, constraint_uid):
@@ -824,8 +865,9 @@ class BulletPhysics(physics.Physics):
         Returns:
             A 3-dimenstional float32 numpy array.
         """
-        _, _, _, _, _, _, _, position, _, _, _ = pybullet.getConstraintInfo(
-                constraintUniqueId=constraint_uid, physicsClientId=self.uid)
+        _, _, _, _, _, _, _, position, _, _, _, _, _, _, _ = (
+            pybullet.getConstraintInfo(
+                constraintUniqueId=constraint_uid, physicsClientId=self.uid))
         return np.array(position, dtype=np.float32)
 
     def get_constraint_orientation(self, constraint_uid):
@@ -837,8 +879,9 @@ class BulletPhysics(physics.Physics):
         Returns:
             An instance of Orientation.
         """
-        _, _, _, _, _, _, _, _, _, quaternion, _ = pybullet.getConstraintInfo(
-                constraintUniqueId=constraint_uid, physicsClientId=self.uid)
+        _, _, _, _, _, _, _, _, _, quaternion, _, _, _, _, _ = (
+            pybullet.getConstraintInfo(
+                constraintUniqueId=constraint_uid, physicsClientId=self.uid))
         return Orientation(quaternion)
 
     def get_constraint_max_force(self, constraint_uid):
@@ -850,8 +893,9 @@ class BulletPhysics(physics.Physics):
         Returns:
             A 3-dimensional float32 numpy array.
         """
-        _, _, _, _, _, _, _, _, _, _, max_force = pybullet.getConstraintInfo(
-                constraintUniqueId=constraint_uid, physicsClientId=self.uid)
+        _, _, _, _, _, _, _, _, _, _, max_force, _, _, _, _ = (
+            pybullet.getConstraintInfo(
+                constraintUniqueId=constraint_uid, physicsClientId=self.uid))
         return np.array(max_force, dtype=np.float32)
 
     def set_constraint_pose(self, constraint_uid, pose):
@@ -1262,19 +1306,3 @@ class BulletPhysics(physics.Physics):
         contact_points = [cp[-1] for cp in contact_points]
 
         return contact_points
-
-    #
-    # Properties
-    #
-
-    @property
-    def uid(self):
-        return self._uid
-
-    @property
-    def time_step(self):
-        return self._time_step
-
-    @property
-    def gravity(self):
-        return self._gravity

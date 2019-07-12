@@ -5,12 +5,14 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import pybullet
 
+from robovat.math.pose import Pose
 from robovat.simulation import physics
 from robovat.simulation.body import Body
 from robovat.simulation.controllable_body import ControllableBody
 from robovat.simulation.constraint import Constraint
-from robovat.utils.logging import logger
+from robovat.simulation.controllable_constraint import ControllableConstraint
 
 
 class Simulator(object):
@@ -21,7 +23,6 @@ class Simulator(object):
                  time_step=1e-3,
                  gravity=[0, 0, -9.8],
                  worker_id=0,
-                 max_steps=None,
                  use_visualizer=False):
         """Initialize the simulator.
 
@@ -30,14 +31,10 @@ class Simulator(object):
             time_step: Time step of the simulation.
             gravity: The gravity as a 3-dimensional vector.
             worker_id: The id of the multi-threaded simulation.
-            max_steps: Maximum number of simulation steps.
             use_visualizer: Render the simulation use the debugging visualizer
                 if True.
         """
         self._gravity = gravity
-
-        self._max_steps = max_steps
-        self._num_steps = 0
 
         # Create the physics backend.
         physics_class = getattr(physics, physics_backend)
@@ -45,6 +42,8 @@ class Simulator(object):
                 time_step=time_step,
                 use_visualizer=use_visualizer,
                 worker_id=worker_id)
+
+        self._num_steps = 0
 
     def __del__(self):
         """Delete the simulator."""
@@ -57,6 +56,14 @@ class Simulator(object):
     @property
     def bodies(self):
         return self._bodies
+
+    @property
+    def num_steps(self):
+        return self._num_steps
+
+    @property
+    def time_step(self):
+        return self.physics.time_step
 
     @property
     def constraints(self):
@@ -73,20 +80,18 @@ class Simulator(object):
     def start(self):
         """Start the simulation."""
         self.physics.start()
+        self._num_steps = 0
 
     def step(self):
         """Take a simulation step."""
         for body in self.bodies.values():
             body.update()
 
+        for constraint in self.constraints.values():
+            constraint.update()
+
         self.physics.step()
-
         self._num_steps += 1
-
-        if self._max_steps:
-            if self._num_steps > self._max_steps:
-                raise ValueError('Simulation has exceeded %d steps.' %
-                                 (self._max_steps))
 
     def add_body(self,
                  filename,
@@ -149,6 +154,10 @@ class Simulator(object):
                        joint_axis=[0, 0, 0],
                        parent_frame_pose=None,
                        child_frame_pose=None,
+                       max_force=None,
+                       max_linear_velocity=None,
+                       max_angular_velocity=None,
+                       is_controllable=False,
                        name=None):
         """Add a constraint to the simulation.
 
@@ -159,33 +168,62 @@ class Simulator(object):
             joint_axis: The axis of the joint.
             parent_frame_pose: The pose of the joint in the parent frame.
             child_frame_pose: The pose of the joint in the child frame.
+            max_force: Max force the constraint can apply.
+            max_linear_velocity: Max linear velocity to change the constraint.
+            max_angular_velocity: Max angular velocity to change the constraint.
+            is_controllable: If True, the constraint can apply motor controls.
 
         Returns:
             An instance of Constraint.
         """
         # Create the constraint.
-        constraint = Constraint(
+        if is_controllable:
+            constraint = ControllableConstraint(
                  parent,
                  child,
                  joint_type,
                  joint_axis,
                  parent_frame_pose,
                  child_frame_pose,
-                 name)
+                 max_force=max_force,
+                 max_linear_velocity=max_linear_velocity,
+                 max_angular_velocity=max_angular_velocity,
+                 name=name)
+        else:
+            assert max_linear_velocity is None
+            assert max_angular_velocity is None
+            constraint = Constraint(
+                 parent,
+                 child,
+                 joint_type,
+                 joint_axis,
+                 parent_frame_pose,
+                 child_frame_pose,
+                 max_force=max_force,
+                 name=name)
 
         # Add the constraint to the dictionary.
         self._constraints[constraint.name] = constraint
 
         return constraint
 
-    def receive_robot_commands(self, robot_command):
+    def receive_robot_commands(self,
+                               robot_command,
+                               component_type='body'):
         """Receive a robot command.
 
         Args:
             robot_command: An instance of RobotCommand.
+            component_type: Either 'body' or 'constraint'.
         """
-        body = self._bodies[robot_command.component]
-        command_method = getattr(body, robot_command.command_type)
+        if component_type == 'body':
+            component = self._bodies[robot_command.component]
+        elif component_type == 'constraint':
+            component = self._constraints[robot_command.component]
+        else:
+            raise ValueError('Unrecognized component type: %r' % component_type)
+
+        command_method = getattr(component, robot_command.command_type)
         command_method(**robot_command.arguments)
 
     def check_contact(self, entity_a, entity_b=None):
@@ -227,6 +265,7 @@ class Simulator(object):
             for b in entities_b:
                 if _check_contact(a, b):
                     has_contact = True
+                    break
 
         return has_contact
 
@@ -270,8 +309,6 @@ class Simulator(object):
                           min_stable_steps=100,
                           max_steps=2000):
         """Wait until the objects are stable."""
-        logger.debug('Waiting for objects to be stable...')
-
         if isinstance(body, (list, tuple)):
             body_list = body
         else:
@@ -304,3 +341,59 @@ class Simulator(object):
 
             if (num_stable_steps >= min_stable_steps or num_steps >= max_steps):
                 break
+
+    def clear_visualization(self):
+        """Clear all visualization items."""
+        pybullet.removeAllUserDebugItems()
+
+    def plot_pose(self,
+                  pose,
+                  axis_length=1.0,
+                  text=None,
+                  text_size=1.0,
+                  text_color=[0, 0, 0]):
+        """Plot a pose or a frame in the debugging visualizer."""
+        if not isinstance(pose, Pose):
+            pose = Pose(pose)
+
+        origin = pose.position
+        x_end = origin + np.dot([axis_length, 0, 0], pose.matrix3.T)
+        y_end = origin + np.dot([0, axis_length, 0], pose.matrix3.T)
+        z_end = origin + np.dot([0, 0, axis_length], pose.matrix3.T)
+
+        pybullet.addUserDebugLine(
+                origin,
+                x_end,
+                lineColorRGB=[1, 0, 0],
+                lineWidth=2)
+
+        pybullet.addUserDebugLine(
+                origin,
+                y_end,
+                lineColorRGB=[0, 1, 0],
+                lineWidth=2)
+
+        pybullet.addUserDebugLine(
+                origin,
+                z_end,
+                lineColorRGB=[0, 0, 1],
+                lineWidth=2)
+
+        if text is not None:
+            pybullet.addUserDebugText(
+                text,
+                origin,
+                text_color,
+                text_size)
+
+    def plot_line(self,
+                  start,
+                  end,
+                  line_color=[0, 0, 0],
+                  line_width=1):
+        """Plot a pose or a frame in the debugging visualizer."""
+        pybullet.addUserDebugLine(
+                start,
+                end,
+                lineColorRGB=line_color,
+                lineWidth=line_width)

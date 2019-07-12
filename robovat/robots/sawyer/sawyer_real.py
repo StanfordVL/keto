@@ -22,12 +22,12 @@ try:
     from std_msgs.msg import Header
     #  from sensor_msgs.msg import JointState
 except ImportError:
-    logger.warn('Failed to import rospy packages.')
+    logger.warning('Failed to import rospy packages.')
 
 try:
     import moveit_commander
 except ImportError:
-    logger.warn('Failed to import moveit packages.')
+    logger.warning('Failed to import moveit packages.')
 
 
 def convert_pose_for_ros(pose):

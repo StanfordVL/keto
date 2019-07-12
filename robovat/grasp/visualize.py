@@ -22,13 +22,11 @@ def plot_grasp(
         arrow_head_width=3,
         arrow_width=1,
         jaw_len=3,
-        jaw_width=3.0,
-        grasp_center_size=7.5,
-        grasp_center_thickness=2.5,
+        jaw_width=1.0,
+        grasp_center_size=0.01,
         grasp_center_style='+',
         grasp_axis_width=1,
         grasp_axis_style='--',
-        line_width=8.0,
         show_center=True,
         show_axis=False,
         scale=1.0):
@@ -43,7 +41,7 @@ def plot_grasp(
     arrow_width: Width of arrow body.
     jaw_len: Length of jaw line.
     jaw_width: Line width of jaw line.
-    grasp_center_thickness: Thickness of grasp center.
+    grasp_center_size: Thickness of grasp center.
     grasp_center_style: Style of center of grasp.
     grasp_axis_width: Line width of grasp axis.
     grasp_axis_style: Style of grasp axis line.
@@ -51,22 +49,22 @@ def plot_grasp(
     show_axis: Whether or not to plot the grasp axis.
     """
     # Plot grasp center
+    # if show_center:
     if show_center:
-        plt.plot(grasp.center[0],
-                 grasp.center[1],
-                 c=color,
-                 marker=grasp_center_style,
-                 mew=scale * grasp_center_thickness,
-                 ms=scale * grasp_center_size)
-    
+        plt.scatter(grasp.center[0],
+                    grasp.center[1],
+                    c='r',
+                    linewidths=scale * grasp_center_size)
+
     # Compute axis and jaw locations.
     axis = grasp.axis
     g1 = grasp.center - 0.5 * float(grasp.width_pixel) * axis
     g2 = grasp.center + 0.5 * float(grasp.width_pixel) * axis
+
     # Start location of grasp jaw 1.
-    g1p = g1 - scale * arrow_len * axis  
+    g1p = g1 - scale * arrow_len * axis
     # Start location of grasp jaw 2.
-    g2p = g2 + scale * arrow_len * axis  
+    g2p = g2 + scale * arrow_len * axis
 
     # Plot grasp axis.
     if show_axis:
@@ -74,19 +72,19 @@ def plot_grasp(
                  color=color,
                  linewidth=scale * grasp_axis_width,
                  linestyle=grasp_axis_style)
-    
+
     # Direction of jaw line.
     jaw_dir = scale * jaw_len * np.array([axis[1], -axis[0]])
-    
+
     # Length of arrow.
     alpha = scale * (arrow_len - arrow_head_len)
-    
+
     # Plot jaw 1.
     jaw_line1 = np.c_[g1 + jaw_dir, g1 - jaw_dir].T
     plt.plot(jaw_line1[:, 0],
              jaw_line1[:, 1],
              linewidth=scale * jaw_width,
-             c=color) 
+             c=color)
     plt.arrow(g1p[0],
               g1p[1],
               alpha * axis[0],
@@ -102,7 +100,7 @@ def plot_grasp(
     plt.plot(jaw_line2[:, 0],
              jaw_line2[:, 1],
              linewidth=scale * jaw_width,
-             c=color) 
+             c=color)
     plt.arrow(g2p[0],
               g2p[1],
               -alpha * axis[0],

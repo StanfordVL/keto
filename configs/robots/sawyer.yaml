@@ -37,7 +37,7 @@ R_FINGER_TIP_NAME: 'r_gripper_r_finger_tip'
 #
 
 # Default maximum time (in seconds) for position control.
-LIMB_TIMEOUT: 15.0
+LIMB_TIMEOUT: 5.0
 
 # Neutral and default initial joint position of the limb.
 LIMB_NEUTRAL_POSITIONS: [
@@ -76,8 +76,10 @@ MOTION_PLANNING: 'moveit'
 
 
 # Path to the URDF file of the arm(without base, with gripper).
-ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm.urdf'
-# arm_path: 'robot/rethink/sawyer_description/urdf/sawyer_arm_collision.urdf'
+# ARM_URDF: 'robot/rethink/sawyer_description/urdf/sawyer_arm_collision.urdf'
+# ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_hammer.urdf'
+# ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_stick.urdf'
+ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_push.urdf'
 
 # Path to the URDF file of the base.
 BASE_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_base.urdf'

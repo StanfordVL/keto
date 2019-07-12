@@ -67,6 +67,10 @@ class Kinect2(Camera):
     def __init__(self,
                  height=DEPTH_HEIGHT,
                  width=DEPTH_WIDTH,
+                 intrinsics=None,
+                 translation=None,
+                 rotation=None,
+                 crop=None,
                  packet_pipeline_mode=Kinect2PacketPipelineMode.CPU,
                  registration_mode=Kinect2RegistrationMode.COLOR_TO_DEPTH,
                  depth_mode=Kinect2DepthMode.METERS,
@@ -97,6 +101,14 @@ class Kinect2(Camera):
         self._device_num = device_num
         self._skip_registration = skip_registration
         self._use_inpaint = use_inpaint
+
+        super(Kinect2, self).__init__(
+            height=height,
+            width=width,
+            intrinsics=intrinsics,
+            translation=translation,
+            rotation=rotation,
+            crop=crop)
 
     def __del__(self):
         """Automatically stop the sensor for safety.
@@ -182,7 +194,7 @@ class Kinect2(Camera):
 
         return True
 
-    def frames(self):
+    def _frames(self):
         """Retrieve a new frame from.
 
         Returns:

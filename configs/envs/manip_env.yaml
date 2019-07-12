@@ -1,0 +1,164 @@
+!include arm_env.yaml
+
+DEBUG: 1
+
+MAX_STEPS: 10
+
+
+# Reward
+TASK_NAME: null
+
+
+# Action
+ACTION:
+  # Z_OFFSET: 0.04
+  CSPACE:
+    LOW: [0.4, -0.4, 0.025]
+    HIGH: [0.8, 0.4, 0.035]
+
+  NUM_MODES: 3
+  NUM_START_ANGLES: 8
+  NUM_WAYPOINTS: 5
+
+  MOTION:
+    TRANSLATION_X: 0.04
+    TRANSLATION_Y: 0.04
+    ROTATION: 0.31416
+    TIME: 0.1
+
+  MIN_DELTA_POSITION: 0.01
+  MIN_DELTA_ANGLE: 0.01
+
+
+# Observation
+OBS:
+  NUM_MOVABLES: 6
+  NUM_POINTS: 256
+
+
+# Simulation
+SIM:
+  MAX_ACTION_STEPS: 5000
+  STEPS_CHECK: 100
+
+  ARM:
+    POSE: [[0, 0, 0], [0, 0, 0]]
+
+  GROUND:
+    PATH: 'data/sim/planes/plane_ceramic.urdf'
+    POSE: [[0, 0, -0.9], [0, 0, 0]]
+
+  TABLE:
+      PATH: 'data/sim/tables/table_large.urdf'
+      POSE: [[0.6, 0, -0.9], [0, 0, 0]]
+      HEIGHT_RANGE: [0.9, 0.9]
+
+  FENCE:
+      PATH: 'data/sim/envs/multi_stage/fence.urdf'
+
+  # Type of movable, one of 'soda', 'convex', 'ycb', 'fixed'.
+  MOVABLE: 'convex'
+
+  # Convex objects.
+  CONVEX:
+    RANDOM_OBJECT: true
+    PATHS: [
+    'data/sim/vhacd_parts/*/*.urdf',
+    ]
+    POSE:
+      X: [0.4, 0.8]
+      Y: [-0.3, 0.3]
+      Z: 0.3
+      ROLL: [0, 3.14]
+      PITCH: [0, 1.57]
+      YAW: [0, 3.14]
+    SCALE:
+      [0.5, 1.2]
+    MARGIN: 0.05
+    MASS: [80., 100.]
+    FRICTION: [0.8, 1.0]
+
+  # Soda objects.
+  SODA:
+    RANDOM_OBJECT: true
+    PATHS: [
+    'data/sim/simple/soda/model.urdf',
+    ]
+    POSE:
+      X: [0.4, 0.8]
+      Y: [-0.3, 0.3]
+      Z: 0.3
+      ROLL: [0, 0]
+      PITCH: [0, 0]
+      YAW: [0, 3.14]
+    SCALE:
+      [1.0, 1.0]
+    MARGIN: 0.05
+    MASS: 10.
+    FRICTION: 0.8
+
+  # YCB objects.
+  YCB:
+    RANDOM_OBJECT: true
+    PATHS: [
+    'data/sim/ycb/001*/*/*/*.urdf',
+    ]
+    POSE:
+      X: [0.4, 0.8]
+      Y: [-0.3, 0.3]
+      Z: 0.3
+      ROLL: [0, 3.14]
+      PITCH: [0, 1.57]
+      YAW: [0, 3.14]
+    SCALE:
+      [0.5, 1.2]
+    MARGIN: 0.05
+    MASS: null
+    FRICTION: null
+
+  # Fixed YCB objects.
+  FIXED:
+    RANDOM_OBJECT: false
+    PATHS: [
+    'data/sim/ycb_google/004*/*/*.urdf',
+    'data/sim/ycb_google/005*/*/*.urdf',
+    'data/sim/ycb_google/007*/*/*.urdf',
+    'data/sim/ycb_google/011*/*/*.urdf',
+    'data/sim/ycb_google/025*/*/*.urdf',
+    'data/sim/ycb_google/026*/*/*.urdf',
+    ]
+    # PATHS: [
+    # 'data/sim/envs/multi_stage/convex_object.urdf',
+    # 'data/sim/envs/multi_stage/concave_object.urdf',
+    # 'data/sim/ycb_google/007*/*/*.urdf',
+    # 'data/sim/ycb_google/011*/*/*.urdf',
+    # 'data/sim/ycb_google/025*/*/*.urdf',
+    # 'data/sim/ycb_google/026*/*/*.urdf',
+    # ]
+    POSE:
+      X: [0.5, 0.7]
+      Y: [-0.2, 0.2]
+      Z: 0.3
+      ROLL: [0, 3.14]
+      PITCH: [0, 1.57]
+      YAW: [0, 0]
+    SCALE:
+      [1.0, 1.0]
+    MARGIN: 0.05
+    MASS: null
+    FRICTION: null
+
+
+# Camera
+KINECT2:
+  DEPTH:
+    HEIGHT: 424
+    WIDTH: 512
+    DISTANCE: 1.0
+    INTRINSICS: [372.66, 0., 241.20, 0., 368.62, 214.19, 0., 0., 1.]
+    TRANSLATION: [0, -0.60, 1.5]
+    ROTATION: [-3.1415, 0, 1.5708]
+    INTRINSICS_NOISE: null
+    TRANSLATION_NOISE: null
+    ROTATION_NOISE: null
+    CROP: null

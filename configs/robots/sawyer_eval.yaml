@@ -1,0 +1,5 @@
+!include sawyer.yaml
+
+LIMB_TIMEOUT: 15.0
+
+ARM_URDF: 'data/robots/rethink/sawyer_description/urdf/sawyer_arm_push.urdf'

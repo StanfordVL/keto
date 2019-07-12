@@ -59,6 +59,33 @@ def force_closure(p1, p2, n1, n2, mu):
     return (in_cone_1 and in_cone_2)
 
 
+def image_dist(g1, g2, alpha=1.0):
+    """Computes the distance between grasps in image space.
+
+    Euclidean distance with alpha weighting of angles
+
+    Args:
+        g1: First grasp.
+        g2: Second grasp.
+        alpha: Weight of angle distance (rad to meters).
+
+    Returns:
+        Distance between grasps.
+    """
+    g1_center = 0.5 * (g1[:, 0:2] + g1[:, 2:4])
+    g1_axis = g1[:, 2:4] - g1[:, 0:2]
+    g1_axis = g1_axis / np.linalg.norm(g1_axis)
+
+    g2_center = 0.5 * (g2[:, 0:2] + g2[:, 2:4])
+    g2_axis = g2[:, 2:4] - g2[:, 0:2]
+    g2_axis = g2_axis / np.linalg.norm(g2_axis)
+
+    point_dist = np.linalg.norm(g1_center - g2_center, axis=-1)
+    axis_dist = np.arccos(np.sum(g1_axis * g2_axis, axis=-1))
+
+    return point_dist + alpha * axis_dist
+
+
 class ImageGraspSampler(object):
     """Image grasp sampler.
 
@@ -88,11 +115,11 @@ class ImageGraspSampler(object):
         return grasps
 
     @abstractmethod
-    def _sample(self, depth, camera, num_samples):
+    def _sample(self, image, camera, num_samples):
         """Sample a set of 2D grasp candidates from a depth image.
 
         Args:
-            depth: Depth image.
+            image: Depth image.
             camera: The camera model.
             num_samples: Number of grasps to sample.
  
@@ -112,7 +139,7 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
                  depth_grad_gaussian_sigma,
                  downsample_rate,
                  max_rejection_samples,
-                 boundary,
+                 crop,
                  min_dist_from_boundary,
                  min_grasp_dist,
                  angle_dist_weight,
@@ -135,8 +162,8 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
                 sampling grasps.
             max_rejection_samples: Ceiling on the number of grasps to check in
                 antipodal grasp rejection sampling.
-            boundary: The rectangular boundary of the grasping region on images.
-            min_dist_from_boundary: Minimum distance from the boundary of the
+            crop: The rectangular crop of the grasping region on images.
+            min_dist_from_boundary: Minimum distance from the crop of the
                 grasping region
             min_grasp_dist: Threshold on the grasp distance.
             angle_dist_weight: Amount to weight the angle difference in grasp
@@ -160,7 +187,7 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
         self.max_rejection_samples = max_rejection_samples
 
         # Distance thresholds for rejection sampling.
-        self.boundary = boundary
+        self.crop = crop
         self.min_dist_from_boundary = min_dist_from_boundary
         self.min_grasp_dist = min_grasp_dist
         self.angle_dist_weight = angle_dist_weight
@@ -177,7 +204,7 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
 
         self.debug = debug
 
-    def _sample(self, depth, camera, num_samples):
+    def _sample(self, image, camera, num_samples):
         """Sample antipodal grasps.
 
         Sample a set of 2D grasp candidates from a depth image by finding depth
@@ -197,23 +224,35 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
             camera = Camera()
             camera.set_calibration(intrinsics, np.zeros((3,)), np.zeros((3,)))
 
+        image = np.squeeze(image, -1)
+
+        if self.crop is None:
+            crop = [0, 0, image.shape[0], image.shape[1]]
+            cropped_image = image
+        else:
+            crop = self.crop
+            cropped_image = image[crop[0]:crop[2],
+                                  crop[1]:crop[3]]
+
+        # import matplotlib.pyplot as plt
+        # plt.figure()
+        # plt.imshow(image)
+        # plt.show()
+
         # Crope the image.
-        depth_cropped = depth[self.boundary[0]:self.boundary[1],
-                              self.boundary[2]:self.boundary[3]]
-        depth_filtered = scipy.ndimage.filters.gaussian_filter(
-            depth_cropped, sigma=self.depth_grad_gaussian_sigma)
+        image_filtered = scipy.ndimage.filters.gaussian_filter(
+            cropped_image, sigma=self.depth_grad_gaussian_sigma)
 
         # Compute edge pixels.
-        depth_downsampled = np.array(
-            Image.fromarray(depth_filtered).resize(
-                (int(depth_filtered.shape[1] / self.downsample_rate),
-                 int(depth_filtered.shape[0] / self.downsample_rate)),
-                Image.BILINEAR))
-        depth_threshed = depth_utils.threshold_gradients(
-            depth_downsampled, self.depth_grad_thresh)
-        depth_zero = np.where(depth_threshed == 0)
-        depth_zero = np.c_[depth_zero[0], depth_zero[1]]
-        edge_pixels = self.downsample_rate * depth_zero
+        new_size = (int(image_filtered.shape[1] / self.downsample_rate),
+                    int(image_filtered.shape[0] / self.downsample_rate))
+        image_downsampled = np.array(
+            Image.fromarray(image_filtered).resize(new_size, Image.BILINEAR))
+        image_threshed = depth_utils.threshold_gradients(
+            image_downsampled, self.depth_grad_thresh)
+        image_zero = np.where(image_threshed == 0)
+        image_zero = np.c_[image_zero[0], image_zero[1]]
+        edge_pixels = self.downsample_rate * image_zero
 
         # Return if no edge pixels
         num_pixels = edge_pixels.shape[0]
@@ -221,17 +260,16 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
             return []
 
         # Compute surface normals.
-        edge_normals = surface_normals(depth_filtered, edge_pixels)
+        edge_normals = surface_normals(image_filtered, edge_pixels)
 
         # Prune surface normals. Form set of valid candidate point pairs.
         if self.gripper_width > 0:
-            max_grasp_width_pixel = Grasp2D(
-                np.zeros(2),
-                0.0,
-                depth=np.max(depth_filtered) + self.min_depth_offset,
-                width=self.gripper_width,
-                camera=camera,
-                ).width_pixel
+            _depth = np.max(image_filtered) + self.min_depth_offset
+            p1 = np.array([0, 0, _depth])
+            p2 = np.array([self.gripper_width, 0, _depth])
+            u1 = camera.project_point(p1, is_world_frame=False)
+            u2 = camera.project_point(p2, is_world_frame=False)
+            max_grasp_width_pixel = np.linalg.norm(u1 - u2)
         else:
             max_grasp_width_pixel = np.inf
 
@@ -249,15 +287,16 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
         if num_pairs == 0:
             return []
 
-        # Iteratively sample grasps.
-        grasps = []
         sample_size = min(self.max_rejection_samples, num_pairs)
         candidate_pair_indices = np.random.choice(
             num_pairs, size=sample_size, replace=False)
 
-        for sample_ind in candidate_pair_indices: 
+        # Iteratively sample grasps.
+        grasps = np.zeros([num_samples, 5], dtype=np.float32)
+        num_grasps = 0
 
-            if len(grasps) >= num_samples:
+        for sample_ind in candidate_pair_indices: 
+            if num_grasps >= num_samples:
                 break
 
             # Sample a random pair without replacement.
@@ -271,56 +310,37 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
             if not force_closure(p1, p2, n1, n2, self.friction_coef):
                 continue
 
-            # Compute grasp parameters.
-            grasp_center_pixel = (p1 + p2) / 2
-            grasp_center_pixel[0] += self.boundary[0]
-            grasp_center_pixel[1] += self.boundary[2]
+            # Convert the coordinates.
+            point1 = np.array([p1[1] + crop[1], p1[0] + crop[0]])
+            point2 = np.array([p2[1] + crop[1], p2[0] + crop[0]])
 
+            # Compute grasp parameters.
+            grasp_center = 0.5 * (point1 + point2)
             dist_from_boundary = min(
-                np.abs(self.boundary[0] - grasp_center_pixel[0]),
-                np.abs(self.boundary[2] - grasp_center_pixel[1]),
-                np.abs(grasp_center_pixel[0] - self.boundary[1]),
-                np.abs(grasp_center_pixel[1] - self.boundary[2]))
+                np.abs(crop[0] - grasp_center[1]),
+                np.abs(crop[1] - grasp_center[0]),
+                np.abs(grasp_center[1] - crop[2]),
+                np.abs(grasp_center[0] - crop[3]))
 
             if dist_from_boundary < self.min_dist_from_boundary:
                 continue
 
-            grasp_axis = p2 - p1
-            grasp_axis = grasp_axis / np.linalg.norm(grasp_axis)
-
-            if grasp_axis[1] != 0:
-                grasp_angle = np.arctan(grasp_axis[0] / grasp_axis[1])
-            else:
-                grasp_angle = 0
-                
-            # Form grasp object.
-            grasp_center_point = np.array([grasp_center_pixel[1],
-                                           grasp_center_pixel[0]])
-            grasp = Grasp2D(center=grasp_center_point,
-                            angle=grasp_angle,
-                            depth=0.0,
-                            width=self.gripper_width,
-                            camera=camera)
-            
             # Skip if the grasp is close to any previously sampled grasp.
-            if len(grasps) > 0:
-                grasp_dists = [
-                    Grasp2D.image_dist(grasp,
-                                       other_grasp,
-                                       alpha=self.angle_dist_weight)
-                    for other_grasp in grasps]
+            if num_grasps > 0:
+                grasp = np.expand_dims(np.r_[point1, point2, 0.0], 0)
+                grasp_dists = image_dist(grasp, grasps[:num_grasps, :])
 
                 if np.min(grasp_dists) <= self.min_grasp_dist:
                     continue
 
             # Get depth in the neighborhood of the center pixel.
             window = [
-                int(grasp_center_pixel[0] - self.depth_sample_window_height),
-                int(grasp_center_pixel[0] + self.depth_sample_window_height),
-                int(grasp_center_pixel[1] - self.depth_sample_window_width),
-                int(grasp_center_pixel[1] + self.depth_sample_window_width)]
-            depth_window = depth[window[0]:window[1], window[2]:window[3]]
-            center_depth = np.min(depth_window)
+                int(grasp_center[1] - self.depth_sample_window_height),
+                int(grasp_center[1] + self.depth_sample_window_height),
+                int(grasp_center[0] - self.depth_sample_window_width),
+                int(grasp_center[0] + self.depth_sample_window_width)]
+            image_window = image[window[0]:window[1], window[2]:window[3]]
+            center_depth = np.min(image_window)
 
             if center_depth == 0 or np.isnan(center_depth):
                 continue
@@ -332,25 +352,29 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
             for i in range(self.depth_samples_per_grasp):
                 sample_depth = (
                     min_depth + np.random.rand() * (max_depth - min_depth))
-                grasp = Grasp2D(center=grasp_center_point,
-                                angle=grasp_angle,
-                                depth=sample_depth,
-                                width=self.gripper_width,
-                                camera=camera)
-                grasps.append(grasp)
+                grasp = np.expand_dims(np.r_[point1, point2, sample_depth], 0)
 
-        # if self.debug:
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.imshow(depth_cropped)
-        plt.figure()
-        plt.imshow(depth_downsampled)
-        plt.figure()
-        plt.imshow(depth_threshed)
-        grasp_vis.plot_grasp_on_image(depth, grasps[0])
-        plt.show()
+                if num_grasps == 0:
+                    grasps[:, :] = grasp
+                else:
+                    grasps[num_grasps] = grasp
 
-        grasps = np.array(
-            [g.vector for g in grasps], dtype=np.float32)
+                num_grasps += 1
+
+        if num_grasps == 0:
+            raise ValueError('Failed to sample any valid grasp.')
+
+        if self.debug:
+            import matplotlib.pyplot as plt
+            # plt.figure()
+            # plt.imshow(image_cropped)
+            # plt.figure()
+            # plt.imshow(image_downsampled)
+            # plt.figure()
+            # plt.imshow(image_threshed)
+            plt.figure()
+            g = Grasp2D.from_vector(grasps[0], camera)
+            grasp_vis.plot_grasp_on_image(image, g)
+            plt.show()
 
         return grasps

@@ -217,3 +217,7 @@ class Body(Entity):
     @mass.setter
     def mass(self, value):
         return self.physics.set_body_mass(self.uid, value)
+
+    def set_color(self, rgba=None, specular=None):
+        return self.physics.set_body_color(
+            self.uid, rgba=rgba, specular=specular)
