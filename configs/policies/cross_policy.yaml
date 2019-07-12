@@ -1,8 +1,0 @@
-!include push_policy.yaml
-
-
-DEBUG: 1
-TASK_NAME: 'cross'
-
-
-NUM_C_ELITES: 1
