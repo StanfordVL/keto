@@ -76,6 +76,33 @@ class CameraObs(observation.Observation):
 
         return image
 
+class DeprojectParamsObs(CameraObs):
+    """Point cloud observation."""
+
+    def __init__(self,
+                 camera,
+                 num_points,
+                 segment_table=True,
+                 max_visible_distance_m=None,
+                 name=None):
+        """Initialize."""
+        self.name = name or 'camera_obs'
+        self.camera = camera
+        self.num_points = num_points
+        self.segment_table = segment_table
+        self.max_visible_distance_m = max_visible_distance_m or INF
+
+        self.env = None
+
+    def get_gym_space(self):
+        """Returns gym space of this observation."""
+        shape = (21, )
+        return gym.spaces.Box(-INF, INF, shape, dtype=np.float32)
+
+    def get_observation(self):
+        """Returns the observation data of the current step."""
+        return self.camera.deproject_params
+
 
 class PointCloudObs(CameraObs):
     """Point cloud observation."""

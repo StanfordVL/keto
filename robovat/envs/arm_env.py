@@ -7,7 +7,7 @@ from __future__ import print_function
 import numpy as np
 
 from robovat.envs import robot_env
-from robovat.math import Pose
+from robovat.math import Pose, get_transform
 from robovat.perception.camera import Kinect2
 from robovat.robots import sawyer
 from robovat.simulation.camera import BulletCamera
@@ -125,3 +125,88 @@ class ArmEnv(robot_env.RobotEnv):
 
     def visualize(self, action, info):
         pass
+
+
+class HammerArmEnv(ArmEnv):
+    """The environment of robot hammering."""
+
+    TARGET_REGION = {
+            'x': 0.3,
+            'y': 0.3,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi,
+            }
+
+    def __init__(self,
+                 observations,
+                 reward_fns,
+                 simulator=None,
+                 config=None,
+                 debug=False):
+        """Initialize."""
+        super(HammerArmEnv, self).__init__(
+            observations=observations,
+            reward_fns=reward_fns,
+            simulator=simulator,
+            config=config,
+            debug=debug)
+
+    def reset_scene(self):
+        """Reset the scene in simulation or the real world."""
+        if self.simulator:
+            self.ground = self.simulator.add_body(self.config.SIM.GROUND.PATH,
+                                                  self.config.SIM.GROUND.POSE,
+                                                  is_static=True,
+                                                  name='ground')
+
+            self.table_pose = Pose(self.config.SIM.TABLE.POSE)
+            self.table = self.simulator.add_body(self.config.SIM.TABLE.PATH,
+                                                 self.table_pose,
+                                                 is_static=True,
+                                                 name='table')
+            self._reset_task()
+            self.reset_camera()
+
+    def _reset_task(self):
+        """Reset the task region.
+        """
+        # Sample and load a target object.
+        if self.simulator:
+            pose = Pose.uniform(**self.TARGET_REGION)
+            peg_pose = get_transform(source=self.table_pose).transform(pose)
+            slot_offset = np.array([-self.config.SIM.SLOT_OFFSET, 0, 0])
+
+            slot_pose = Pose([peg_pose.position + slot_offset,
+                              peg_pose.orientation])
+
+            self.slot = self.simulator.add_body(
+                    self.config.SIM.SLOT_PATH, 
+                    slot_pose,
+                    is_static=True, 
+                    name='slot')
+            self.target = self.simulator.add_body(
+                    self.config.SIM.PEG_PATH, 
+                    peg_pose, 
+                    is_static=False,
+                    name='peg')
+
+            # Visualize the goal.
+        
+            if self.debug:
+                import pybullet
+
+                target = self.target.pose.position
+
+                pybullet.addUserDebugLine(
+                        [target[0] - 0.02, target[1], target[2]],
+                        [target[0] + 0.02, target[1], target[2]],
+                        lineColorRGB=[1, 1, 0],
+                        lineWidth=5)
+
+                pybullet.addUserDebugLine(
+                        [target[0], target[1] - 0.02, target[2]],
+                        [target[0], target[1] + 0.02, target[2]],
+                        lineColorRGB=[1, 1, 0],
+                        lineWidth=5)

@@ -14,6 +14,8 @@ from tf_agents.specs import tensor_spec
 
 from robovat.problems import problem
 from robovat.perception import tf_depth_utils
+from robovat.perception.camera import Camera
+from robovat.grasp import Grasp2D
 
 slim = tf.contrib.slim
 
@@ -149,25 +151,56 @@ class Grasp4DofProblem(problem.Problem):
         self._spec = OrderedDict(
             [(spec.name, spec) for spec in spec_list])
 
+    def decode_params(self, params):
+        intrinsics, pose_position, pose_matrix = \
+                np.split(np.squeeze(params),
+                        [9, 12])
+        intrinsics = np.reshape(intrinsics, [3, 3])
+        pose_position = np.reshape(pose_position, [3, 1])
+        pose_matrix = np.reshape(pose_matrix, [3, 3])
+        return [intrinsics, pose_position, pose_matrix]
+
     def convert_trajectory(self, trajectory):
         """Convert trajectory."""
         # Get the default session if it is not set.
         if self.sess is None:
             self.sess = tf.get_default_session()
 
-        images = trajectory.observation['depth']
+        observation = trajectory.observation
+        images = observation['depth']
+        point_cloud = observation['point_cloud']
+        intrinsics = observation['intrinsics']
+        translation = observation['translation']
+        rotation = observation['rotation']
+
+        camera = Camera(intrinsics=intrinsics,
+                        translation=translation,
+                        rotation=rotation)
+
         grasps = trajectory.action
+        grasp2d = Grasp2D.from_vector(grasps, camera=camera)
+        grasp_4dof = grasp2d.as_4dof()        
+        reward = trajectory.reward
+
+        point_cloud = np.squeeze(point_cloud)
+        x, y, z, angle = grasp_4dof
+        grasp_4dof = np.array(
+                [reward, x, y, z, 0, 0, angle], 
+                dtype=np.float32)
+        extra_data = OrderedDict([
+            ('point_cloud', point_cloud),
+            ('grasp_4dof', grasp_4dof)])
+
         feed_dict = {
             self.images_ph: images,
             self.grasps_ph: grasps,
         }
         inputs = self.sess.run(self.converted_data, feed_dict=feed_dict)
-
-        return OrderedDict([
+        data =  OrderedDict([
             ('grasp_image', inputs['grasp_image']),
             ('grasp_pose', inputs['grasp_pose']),
-            ('grasp_success', trajectory.reward),
-        ])
+            ('grasp_success', trajectory.reward)])
+        return data, extra_data
 
     def preprocess(self, batch):
         """Proprocess the batch data."""

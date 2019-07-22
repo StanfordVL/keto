@@ -18,7 +18,7 @@ from robovat.utils.logging import logger
 GRASPABLE_NAME = 'graspable'
 
 
-class Grasp4DofEnv(arm_env.ArmEnv):
+class Grasp4DofPointCloudEnv(arm_env.ArmEnv):
     """Top-down 4-DoF grasping environment."""
 
     def __init__(self,
@@ -43,20 +43,11 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 crop=self.config.KINECT2.DEPTH.CROP)
 
         observations = [
-            camera_obs.CameraObs(
-                name=self.config.OBSERVATION.TYPE,
-                camera=self.camera,
-                modality=self.config.OBSERVATION.TYPE,
-                max_visible_distance_m=None),
             camera_obs.SegmentedPointCloudObs(
                 camera=self.camera,
                 num_points=self.config.OBSERVATION.NUM_POINTS,
                 body_names=['graspable'],
                 name='point_cloud'),
-            camera_obs.DeprojectParamsObs(
-                camera=self.camera,
-                num_points=self.config.OBSERVATION.NUM_POINTS,
-                name='deproject_params'),
             camera_obs.CameraIntrinsicsObs(
                 name='intrinsics',
                 camera=self.camera),
@@ -98,9 +89,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 % (self.config.SIM.GRASPABLE.PATHS))
             logger.debug('Found %d graspable objects.', num_graspable_paths)
 
-            self.init_record()
-
-        super(Grasp4DofEnv, self).__init__(
+        super(Grasp4DofPointCloudEnv, self).__init__(
             observations=observations,
             reward_fns=reward_fns,
             simulator=self.simulator,
@@ -124,34 +113,28 @@ class Grasp4DofEnv(arm_env.ArmEnv):
         else:
             raise ValueError
 
-    def init_record(self):
-        self.success_record = np.zeros(
-             shape=(len(self.all_graspable_paths), ))
-        return
-
     def feedback(self, reward):
-        self.success_record[self.graspable_index] += reward
-        print(self.success_record)
         return
-
-    def choose_graspable_index(self):
-        argsort = np.argsort(
-                self.success_record)
-        return argsort[0]
 
     def reset_scene(self):
         """Reset the scene in simulation or the real world.
         """
-        super(Grasp4DofEnv, self).reset_scene()
+        super(Grasp4DofPointCloudEnv, self).reset_scene()
 
         # Reload graspable object.
         if self.config.SIM.GRASPABLE.RESAMPLE_N_EPISODES:
             if (self.num_episodes %
                     self.config.SIM.GRASPABLE.RESAMPLE_N_EPISODES == 0):
                 self.graspable_path = None
-    
-        self.graspable_index = self.choose_graspable_index()
-        self.graspable_path = (
+
+        if self.graspable_path is None:
+            if self.config.SIM.GRASPABLE.USE_RANDOM_SAMPLE:
+                self.graspable_path = random.choice(
+                    self.all_graspable_paths)
+            else:
+                self.graspable_index = ((self.graspable_index + 1) %
+                                        len(self.all_graspable_paths))
+                self.graspable_path = (
                         self.all_graspable_paths[self.graspable_index])
 
         pose = Pose.uniform(x=self.config.SIM.GRASPABLE.POSE.X,
@@ -191,7 +174,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
     def reset_robot(self):
         """Reset the robot in simulation or the real world.
         """
-        super(Grasp4DofEnv, self).reset_robot()
+        super(Grasp4DofPointCloudEnv, self).reset_robot()
         self.robot.reset(self.config.ARM.OFFSTAGE_POSITIONS)
 
     def execute_action(self, action):
@@ -210,7 +193,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 'Unrecognized action type: %r' % (self.config.ACTION.TYPE))
 
         start = Pose(
-            [[x, y, z + self.config.ARM.FINGER_TIP_OFFSET], [0, np.pi, angle]])
+            [[x, y, z], [0, np.pi, angle]])
 
         phase = 'initial'
 

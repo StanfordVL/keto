@@ -101,6 +101,7 @@ class TrajectoryWriter(object):
         self._output_path = None
         self._num_files = 0
         self._num_entries_this_file = 0
+        self._num_calls = 0
 
         if not os.path.isdir(output_dir):
             logger.info('Making output directory %s...', output_dir)
@@ -130,10 +131,11 @@ class TrajectoryWriter(object):
         # Update the cursor.
         self._num_entries_this_file += num_entries
         self._num_entries_this_file %= self._num_entries_per_file
+        self._num_calls = self._num_calls + 1
 
     def write(self, trajectory):
         """Write a string record to the file."""
-        data = self._problem.convert_trajectory(trajectory)
+        data, extra_data = self._problem.convert_trajectory(trajectory)
 
         if not isinstance(data, list):
             data = [data]
@@ -141,11 +143,14 @@ class TrajectoryWriter(object):
         for entry in data:
             self._write_data(entry)
 
+        if extra_data:
+            self._write_extra_data(extra_data)
+
         return len(data)
 
     def _write_data(self, data):
         feature = dict()
-
+        
         for name, spec in self._spec.items():
             element = data[name]
             if isinstance(spec, OrderedDict):
@@ -160,6 +165,20 @@ class TrajectoryWriter(object):
         serialized = example.SerializeToString()
         self._writer.write(serialized)
         self._writer.flush()
+
+    def _write_extra_data(self, data):
+        for name in data.keys():
+            item = data[name]
+            out_dir = os.path.join(
+                          self._output_dir,
+                          name)
+            if not os.path.exists(out_dir):
+                os.system('mkdir -p ' + out_dir)
+            path = os.path.join(out_dir, 
+                    '%06d.npy' % (self._num_calls))
+            with open(path, 'wb') as f:
+                np.save(f, item)
+        return
 
     def close(self):
         if self._writer is not None:

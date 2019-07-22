@@ -64,7 +64,7 @@ class RobotEnv(gym.Env):
             obs.initialize(self)
         for reward_fn in self.reward_fns:
             reward_fn.initialize(self)
-
+    
         self.observation_space = gym.spaces.Dict([
             (obs.name, obs.get_gym_space()) for obs in self.observations])
 

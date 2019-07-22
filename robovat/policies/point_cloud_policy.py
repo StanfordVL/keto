@@ -18,13 +18,24 @@ class PointCloudPolicy(tf_policy.Base):
     def __init__(self, 
                  time_step_spec=None,
                  action_spec=None,
-                 q_network=None,
                  config=None):
-        self._q_network = q_network
 
+        self.config = config
         super(PointCloudPolicy, self).__init__(
                 time_step_spec,
                 action_spec)
+
+    def evaluate(self, time_step, samples):
+        return 
+
+    def _variables(self):
+        return 
+
+    def _action(self, time_step, policy_state, seed):
+        return
+
+    def _distribution(self, time_step, policy_state):
+        raise NotImplementedError
  
 
 class CemPolicy(tf_policy.Base):

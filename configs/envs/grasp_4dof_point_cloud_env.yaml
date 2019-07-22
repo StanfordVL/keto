@@ -6,12 +6,12 @@ MAX_STEPS: null
 
 OBSERVATION:
   # Choose between `depth` and `point_cloud`.
-  TYPE: 'depth'
+  TYPE: 'point_cloud'
   NUM_POINTS: 1024
 
 ACTION:
   # Choose between `IMAGE`(in image space) and `CUBOID`(in a 3D cuboid region).
-  TYPE: 'IMAGE'
+  TYPE: 'CUBOID'
 
   # The `CUBOID` defines a cuvoid region for the grasping center.
   CUBOID:
@@ -35,7 +35,6 @@ SIM:
 
   GRASPABLE:
     PATHS: [
-    #'data/sim/procedural/000000/*.urdf',
     'data/sim/procedural/000000/*.urdf'
     ]
     POSE:

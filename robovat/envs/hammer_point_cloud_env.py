@@ -5,20 +5,24 @@ import random
 import gym
 import numpy as np
 
+import pybullet
+
 from robovat.envs import arm_env
 from robovat.envs.observations import camera_obs
 from robovat.envs.reward_fns.grasp_reward import GraspReward
+from robovat.envs.reward_fns.hammer_reward import HammerReward
 from robovat.grasp import Grasp2D
 from robovat.math import Pose
 from robovat.math import get_transform
 from robovat.robots import sawyer
 from robovat.utils.logging import logger
 
+import matplotlib.pyplot as plt
 
 GRASPABLE_NAME = 'graspable'
 
 
-class Grasp4DofEnv(arm_env.ArmEnv):
+class HammerPointCloudEnv(arm_env.HammerArmEnv):
     """Top-down 4-DoF grasping environment."""
 
     def __init__(self,
@@ -43,20 +47,11 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 crop=self.config.KINECT2.DEPTH.CROP)
 
         observations = [
-            camera_obs.CameraObs(
-                name=self.config.OBSERVATION.TYPE,
-                camera=self.camera,
-                modality=self.config.OBSERVATION.TYPE,
-                max_visible_distance_m=None),
             camera_obs.SegmentedPointCloudObs(
                 camera=self.camera,
                 num_points=self.config.OBSERVATION.NUM_POINTS,
                 body_names=['graspable'],
                 name='point_cloud'),
-            camera_obs.DeprojectParamsObs(
-                camera=self.camera,
-                num_points=self.config.OBSERVATION.NUM_POINTS,
-                name='deproject_params'),
             camera_obs.CameraIntrinsicsObs(
                 name='intrinsics',
                 camera=self.camera),
@@ -72,7 +67,10 @@ class Grasp4DofEnv(arm_env.ArmEnv):
             GraspReward(
                 name='grasp_reward',
                 end_effector_name=sawyer.SawyerSim.ARM_NAME,
-                graspable_name=GRASPABLE_NAME)
+                graspable_name=GRASPABLE_NAME),
+            HammerReward(
+                name='hammer_reward',
+                target_name='peg')
         ]
 
         if self.simulator:
@@ -98,60 +96,54 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 % (self.config.SIM.GRASPABLE.PATHS))
             logger.debug('Found %d graspable objects.', num_graspable_paths)
 
-            self.init_record()
-
-        super(Grasp4DofEnv, self).__init__(
+        super(HammerPointCloudEnv, self).__init__(
             observations=observations,
             reward_fns=reward_fns,
             simulator=self.simulator,
             config=self.config,
             debug=self.debug)
 
-        if self.config.ACTION.TYPE == 'CUBOID':
-            low = self.config.ACTION.CUBOID.LOW + [0.0]
-            high = self.config.ACTION.CUBOID.HIGH + [2 * np.pi]
-            self.action_space = gym.spaces.Box(
-                low=np.array(low),
-                high=np.array(high),
+        low = np.array(self.config.ACTION.GRASP.LOW + [0.0])
+        high = np.array(self.config.ACTION.GRASP.HIGH + [2 * np.pi])
+        space_grasp = gym.spaces.Box(
+                low=low,
+                high=high,
                 dtype=np.float32)
-        elif self.config.ACTION.TYPE == 'IMAGE':
-            height = self.camera.height
-            width = self.camera.width
-            self.action_space = gym.spaces.Box(
-                low=np.array([0, 0, 0, 0, -(2*24 - 1)]),
-                high=np.array([width, height, width, height, 2*24 - 1]),
+
+        num_steps = self.config.ACTION.TASK.T
+        low = np.array(self.config.ACTION.TASK.LOW)
+        high = np.array(self.config.ACTION.TASK.HIGH)
+        low_task = np.tile(low[np.newaxis, :], [num_steps, 1])
+        high_task = np.tile(high[np.newaxis, :], [num_steps, 1])
+        space_task = gym.spaces.Box(
+                low=low_task,
+                high=high_task,
                 dtype=np.float32)
-        else:
-            raise ValueError
 
-    def init_record(self):
-        self.success_record = np.zeros(
-             shape=(len(self.all_graspable_paths), ))
-        return
+        self.action_space = gym.spaces.Dict(
+                {'grasp': space_grasp,
+                 'task': space_task})
 
-    def feedback(self, reward):
-        self.success_record[self.graspable_index] += reward
-        print(self.success_record)
-        return
-
-    def choose_graspable_index(self):
-        argsort = np.argsort(
-                self.success_record)
-        return argsort[0]
 
     def reset_scene(self):
         """Reset the scene in simulation or the real world.
         """
-        super(Grasp4DofEnv, self).reset_scene()
+        super(HammerPointCloudEnv, self).reset_scene()
 
         # Reload graspable object.
         if self.config.SIM.GRASPABLE.RESAMPLE_N_EPISODES:
             if (self.num_episodes %
                     self.config.SIM.GRASPABLE.RESAMPLE_N_EPISODES == 0):
                 self.graspable_path = None
-    
-        self.graspable_index = self.choose_graspable_index()
-        self.graspable_path = (
+
+        if self.graspable_path is None:
+            if self.config.SIM.GRASPABLE.USE_RANDOM_SAMPLE:
+                self.graspable_path = random.choice(
+                    self.all_graspable_paths)
+            else:
+                self.graspable_index = ((self.graspable_index + 1) %
+                                        len(self.all_graspable_paths))
+                self.graspable_path = (
                         self.all_graspable_paths[self.graspable_index])
 
         pose = Pose.uniform(x=self.config.SIM.GRASPABLE.POSE.X,
@@ -191,10 +183,27 @@ class Grasp4DofEnv(arm_env.ArmEnv):
     def reset_robot(self):
         """Reset the robot in simulation or the real world.
         """
-        super(Grasp4DofEnv, self).reset_robot()
+        super(HammerPointCloudEnv, self).reset_robot()
         self.robot.reset(self.config.ARM.OFFSTAGE_POSITIONS)
 
+    def feedback(self, reward):
+        return
+
     def execute_action(self, action):
+
+        action_grasp = action['grasp']
+        action_task = action['task']
+        #
+        # Grasping
+        #
+        self._execute_action_grasping(action_grasp)
+     
+        #
+        # Hammering
+        #
+        self._execute_action_hammering(action_task)
+
+    def _execute_action_grasping(self, action):
         """Execute the grasp action.
 
         Args:
@@ -210,7 +219,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 'Unrecognized action type: %r' % (self.config.ACTION.TYPE))
 
         start = Pose(
-            [[x, y, z + self.config.ARM.FINGER_TIP_OFFSET], [0, np.pi, angle]])
+            [[x, y, z - self.config.SIM.Z_OFFSET], [0, np.pi, angle]])
 
         phase = 'initial'
 
@@ -219,7 +228,6 @@ class Grasp4DofEnv(arm_env.ArmEnv):
             num_action_steps = 0
 
         while(phase != 'done'):
-
             if self.simulator:
                 self.simulator.step()
                 if phase == 'start':
@@ -227,7 +235,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
 
             if self.is_phase_ready(phase, num_action_steps):
                 phase = self.get_next_phase(phase)
-                logger.debug('phase: %s', phase)
+                logger.debug('grasping phase: %s', phase)
 
                 if phase == 'overhead':
                     self.robot.move_to_joint_positions(
@@ -259,21 +267,125 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                 elif phase == 'postend':
                     postend = self.robot.end_effector.pose
                     postend.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
-                    self.robot.move_to_gripper_pose(postend, straight_line=True)
+                    self.robot.move_to_gripper_pose(postend, 
+                            straight_line=True, speed=0.3)
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=10,
-                            spinning_friction=10)
+                            lateral_friction=200,
+                            rolling_friction=150,
+                            spinning_friction=150)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=10,
-                            spinning_friction=10)
+                            lateral_friction=200,
+                            rolling_friction=150,
+                            spinning_friction=150)
                         self.table.set_dynamics(
                             lateral_friction=1)
-        
+
+    def _execute_action_hammering(self, action):
+        """Execute the hammering action.
+        """
+        phase = 'initial'
+        if self.simulator:
+            num_action_steps = 0
+
+        while(phase != 'done'):
+            if self.simulator:
+                self.simulator.step()
+                if phase == 'start':
+                    num_action_steps += 1
+
+            if self.is_phase_ready(phase, num_action_steps):
+                phase = self.get_next_phase(phase)
+                logger.debug('task phase: %s', phase)
+
+                if phase == 'overhead':
+                    pass
+   
+                elif phase == 'prestart':
+                    # move the tool based on action
+                    self._draw_path(action)
+                    num_move_steps = action.shape[0]
+                    for step in range(num_move_steps):
+                        x, y, z, angle = action[step]
+                        angle = (angle + np.pi) % (np.pi * 2) - np.pi
+
+                        [curr_x, curr_y, curr_z
+                                ] = self.robot.end_effector.pose.position
+                        curr_rz = (self.robot.end_effector.pose.euler[2] + np.pi
+                                ) % (np.pi * 2) - np.pi
+                        gripper_pose = np.array([curr_x, curr_y, curr_z, curr_rz])
+
+                        logger.debug('current pose {}'.format(
+                            gripper_pose))
+                        logger.debug('moving to {}'.format(action[step]))
+                        logger.debug('pose delta {}'.format(action[step] - gripper_pose))
+                    
+                        pose = Pose(
+                               [[x, y, z], 
+                                   [0, np.pi, angle]])
+                        self.plot_pose(pose, 0.1)
+                        self.robot.move_to_gripper_pose(
+                                pose, straight_line=True, 
+                                timeout=2,
+                                speed=0.7)
+                        ready = False
+                        while(not ready):
+                            if self.simulator:
+                                self.simulator.step()
+                            ready = self.is_phase_ready(
+                                phase, num_action_steps)             
+
+                elif phase == 'start':
+                    self._wait_until_ready(phase, num_action_steps)
+                    wrist_joint_angle = self.robot.joint_positions['right_j6']
+                    positions = {'right_j6': wrist_joint_angle - np.pi * 0.25}
+                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                                                   timeout=2)
+
+                    self._wait_until_ready(phase, num_action_steps)
+                    positions = {'right_j6': wrist_joint_angle + np.pi * 0.25}
+                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                                                   timeout=2)
+
+                    """
+                    self._wait_until_ready(phase, num_action_steps)
+                    positions = {'right_j6': wrist_joint_angle - np.pi * 0.25}
+                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                                                   timeout=2)
+
+                    self._wait_until_ready(phase, num_action_steps)
+                    positions = {'right_j6': wrist_joint_angle + np.pi * 0.25}
+                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                                                   timeout=2)
+                    self._wait_until_ready(phase, num_action_steps)
+                    """
+
+                elif phase == 'end':
+                    pass
+
+                elif phase == 'postend':
+                    pass
+
+    def _draw_path(self, action):
+        plt.figure(figsize=(4, 3))
+        plt.plot(action[:, 0], action[:, 1], c='green')
+        plt.xlim((-0.5, 1.5))
+        plt.ylim((-0.5, 0.5))
+        plt.savefig('./episodes/figures/path_%02d'%(
+                np.random.randint(100)))
+        plt.close()
+
+    def _wait_until_ready(self, phase, num_action_steps):
+        ready = False
+        while(not ready):
+            if self.simulator:
+                self.simulator.step()
+            ready = self.is_phase_ready(
+                    phase, num_action_steps)
+        return
+
     def get_next_phase(self, phase):
         """Get the next phase of the current phase.
 
@@ -325,3 +437,44 @@ class Grasp4DofEnv(arm_env.ArmEnv):
             return True
         else:
             return False
+
+    def plot_pose(self,
+                  pose,
+                  axis_length=1.0,
+                  text=None,
+                  text_size=1.0,
+                  text_color=[0, 0, 0]):
+        """Plot a pose or a frame in the debugging visualizer."""
+        if not isinstance(pose, Pose):
+            pose = Pose(pose)
+
+        origin = pose.position
+        x_end = origin + np.dot([axis_length, 0, 0], pose.matrix3.T)
+        y_end = origin + np.dot([0, axis_length, 0], pose.matrix3.T)
+        z_end = origin + np.dot([0, 0, axis_length], pose.matrix3.T)
+
+        pybullet.addUserDebugLine(
+                origin,
+                x_end,
+                lineColorRGB=[1, 0, 0],
+                lineWidth=2)
+
+        pybullet.addUserDebugLine(
+                origin,
+                y_end,
+                lineColorRGB=[0, 1, 0],
+                lineWidth=2)
+
+        pybullet.addUserDebugLine(
+                origin,
+                z_end,
+                lineColorRGB=[0, 0, 1],
+                lineWidth=2)
+
+        if text is not None:
+            pybullet.addUserDebugText(
+                text,
+                origin,
+                text_color,
+                text_size)
+

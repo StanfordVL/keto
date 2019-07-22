@@ -5,20 +5,22 @@ DEBUG: 0
 MAX_STEPS: null
 
 OBSERVATION:
-  # Choose between `depth` and `point_cloud`.
-  TYPE: 'depth'
+  TYPE: 'point_cloud'
   NUM_POINTS: 1024
 
 ACTION:
-  # Choose between `IMAGE`(in image space) and `CUBOID`(in a 3D cuboid region).
-  TYPE: 'IMAGE'
+  TYPE: 'CUBOID'
 
-  # The `CUBOID` defines a cuvoid region for the grasping center.
-  CUBOID:
+  # The `GRASP` defines a cuvoid region for the grasping center.
+  GRASP:
     LOW: [0.30, -0.30, 0.02]
     HIGH: [0.90, 0.30, 0.12]
 
-
+  TASK:
+    T: 8
+    LOW:  [0.60, 0.00, 0.02, 0.00]
+    HIGH: [1.50, 0.50, 0.50, 6.29]
+    
 SIM:
   ARM:
     CONFIG: 'configs/robots/sawyer.yaml'
@@ -30,12 +32,10 @@ SIM:
 
   TABLE:
     PATH: 'data/sim/tables/table_grasp.urdf'
-    POSE: [[0.6, 0, -0.9], [0, 0, 0]]
-    HEIGHT_RANGE: [0.9, 0.9]
+    POSE: [[0.6, 0, 0], [0, 0, 0]]
 
   GRASPABLE:
     PATHS: [
-    #'data/sim/procedural/000000/*.urdf',
     'data/sim/procedural/000000/*.urdf'
     ]
     POSE:
@@ -49,5 +49,14 @@ SIM:
       [1.0, 1.0]
     USE_RANDOM_SAMPLE: 1
     RESAMPLE_N_EPISODES: 1
+
+  SLOT_PATH: 'data/sim/tool_hammer/slot.urdf'
+  PEG_PATH: 'data/sim/tool_hammer/peg_easy.urdf'
+
+  SLOT_OFFSET: 0.1
+  HAMMER_HEIGHT_OFFSET: 0.115
+ 
+  Z_OFFSET: 0.1
+
 
   MAX_ACTION_STEPS: 4000

@@ -204,6 +204,15 @@ class Camera(object):
         return np.array(point_cloud.T)
 
     @property
+    def deproject_params(self):
+        params = np.concatenate(
+                    [self.intrinsics.flatten(), 
+                     self.pose.position.flatten(),
+                     self.pose.matrix3.flatten()])
+        return params
+
+
+    @property
     def height(self):
         return self._height
 

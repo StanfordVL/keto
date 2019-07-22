@@ -135,7 +135,6 @@ class Simulator(object):
 
         # Add the body to the dictionary.
         self._bodies[body.name] = body
-
         return body
 
     def remove_body(self, name):

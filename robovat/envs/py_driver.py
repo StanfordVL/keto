@@ -82,9 +82,9 @@ class PyStepDriver(driver.Driver):
                 action_step = self.policy.action(time_step, policy_state)
                 next_time_step = self.env.step(action_step.action)
                 next_policy_state = action_step.state
-
                 traj = trajectory.from_transition(
                     time_step, action_step, next_time_step)
+                self.env.feedback(traj.reward)
 
                 for observer in self.observers:
                     observer(traj)
