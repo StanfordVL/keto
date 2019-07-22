@@ -1,4 +1,10 @@
 # User-defined
+runs
+cvae
+*.png
+*.jpg
+*.hdf5
+cvae_grasping/runs
 *.pyc
 *.nfs*
 *.out

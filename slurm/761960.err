@@ -1,0 +1,205 @@
+WARNING: Logging before flag parsing goes to stderr.
+W0718 15:40:18.714857 140055166060288 lazy_loader.py:50] 
+The TensorFlow contrib module will not be included in TensorFlow 2.0.
+For more information, please see:
+  * https://github.com/tensorflow/community/blob/master/rfcs/20180907-contrib-sunset.md
+  * https://github.com/tensorflow/addons
+  * https://github.com/tensorflow/io (for I/O related ops)
+If you depend on functionality not listed there, please file an issue.
+
+W0718 15:40:20.264744 140055166060288 kinect2.py:17] Unable to import pylibfreenect2. Python-only Kinect drivermay not work properly.
+2019-07-18 15:40:31.223369: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2019-07-18 15:40:31.259338: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1618] Found device 0 with properties: 
+name: Tesla K80 major: 3 minor: 7 memoryClockRate(GHz): 0.8235
+pciBusID: 0000:86:00.0
+2019-07-18 15:40:31.259955: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudart.so.10.0
+2019-07-18 15:40:31.261958: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10.0
+2019-07-18 15:40:31.263481: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10.0
+2019-07-18 15:40:31.263998: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10.0
+2019-07-18 15:40:31.266166: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10.0
+2019-07-18 15:40:31.267829: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10.0
+2019-07-18 15:40:31.271458: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2019-07-18 15:40:31.273727: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Adding visible gpu devices: 0
+2019-07-18 15:40:31.456379: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x560c4c6219a0 executing computations on platform CUDA. Devices:
+2019-07-18 15:40:31.456421: I tensorflow/compiler/xla/service/service.cc:175]   StreamExecutor device (0): Tesla K80, Compute Capability 3.7
+2019-07-18 15:40:31.459125: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 2800220000 Hz
+2019-07-18 15:40:31.459296: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x560c4c695dc0 executing computations on platform Host. Devices:
+2019-07-18 15:40:31.459315: I tensorflow/compiler/xla/service/service.cc:175]   StreamExecutor device (0): <undefined>, <undefined>
+2019-07-18 15:40:31.460414: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1618] Found device 0 with properties: 
+name: Tesla K80 major: 3 minor: 7 memoryClockRate(GHz): 0.8235
+pciBusID: 0000:86:00.0
+2019-07-18 15:40:31.460469: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudart.so.10.0
+2019-07-18 15:40:31.460493: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10.0
+2019-07-18 15:40:31.460516: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10.0
+2019-07-18 15:40:31.460538: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10.0
+2019-07-18 15:40:31.460560: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10.0
+2019-07-18 15:40:31.460582: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10.0
+2019-07-18 15:40:31.460604: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2019-07-18 15:40:31.462536: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Adding visible gpu devices: 0
+2019-07-18 15:40:31.462584: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudart.so.10.0
+2019-07-18 15:40:31.464265: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1159] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-18 15:40:31.464282: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1165]      0 
+2019-07-18 15:40:31.464290: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1178] 0:   N 
+2019-07-18 15:40:31.466457: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1304] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10802 MB memory) -> physical GPU (device: 0, name: Tesla K80, pci bus id: 0000:86:00.0, compute capability: 3.7)
+2019-07-19 07:24:26.507391: W tensorflow/core/framework/op_kernel.cc:1610] Invalid argument: ValueError: Failed to sample any valid grasp.
+Traceback (most recent call last):
+
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 217, in __call__
+    ret = func(*args)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 111, in sample
+    grasps = self._sample(depth, camera, num_samples)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 365, in _sample
+    raise ValueError('Failed to sample any valid grasp.')
+
+ValueError: Failed to sample any valid grasp.
+
+
+/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py:57: RuntimeWarning: invalid value encountered in arccos
+  in_cone_2 = (np.arccos(n2.dot(v)) < alpha)
+/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py:56: RuntimeWarning: invalid value encountered in arccos
+  in_cone_1 = (np.arccos(n1.dot(-v)) < alpha)
+Traceback (most recent call last):
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/client/session.py", line 1348, in _do_call
+    return fn(*args)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/client/session.py", line 1333, in _run_fn
+    target_list, run_metadata)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/client/session.py", line 1426, in _call_tf_sessionrun
+    run_metadata)
+tensorflow.python.framework.errors_impl.InvalidArgumentError: 2 root error(s) found.
+  (0) Invalid argument: ValueError: Failed to sample any valid grasp.
+Traceback (most recent call last):
+
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 217, in __call__
+    ret = func(*args)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 111, in sample
+    grasps = self._sample(depth, camera, num_samples)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 365, in _sample
+    raise ValueError('Failed to sample any valid grasp.')
+
+ValueError: Failed to sample any valid grasp.
+
+
+	 [[{{node PyFunc}}]]
+	 [[PyFunc/_49]]
+  (1) Invalid argument: ValueError: Failed to sample any valid grasp.
+Traceback (most recent call last):
+
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 217, in __call__
+    ret = func(*args)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 111, in sample
+    grasps = self._sample(depth, camera, num_samples)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 365, in _sample
+    raise ValueError('Failed to sample any valid grasp.')
+
+ValueError: Failed to sample any valid grasp.
+
+
+	 [[{{node PyFunc}}]]
+0 successful operations.
+0 derived errors ignored.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "tools/run_env.py", line 254, in <module>
+    main()
+  File "tools/run_env.py", line 250, in main
+    driver.run(time_step, policy_state)
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/envs/py_driver.py", line 82, in run
+    action_step = self.policy.action(time_step, policy_state)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tf_agents/policies/py_policy.py", line 120, in action
+    return self._action(time_step, policy_state)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tf_agents/policies/py_tf_policy.py", line 190, in _action
+    action_step = self.session.run(self._action_step, feed_dict)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/client/session.py", line 941, in run
+    run_metadata_ptr)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/client/session.py", line 1164, in _run
+    feed_dict_tensor, options, run_metadata)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/client/session.py", line 1342, in _do_run
+    run_metadata)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/client/session.py", line 1367, in _do_call
+    raise type(e)(node_def, op, message)
+tensorflow.python.framework.errors_impl.InvalidArgumentError: 2 root error(s) found.
+  (0) Invalid argument: ValueError: Failed to sample any valid grasp.
+Traceback (most recent call last):
+
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 217, in __call__
+    ret = func(*args)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 111, in sample
+    grasps = self._sample(depth, camera, num_samples)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 365, in _sample
+    raise ValueError('Failed to sample any valid grasp.')
+
+ValueError: Failed to sample any valid grasp.
+
+
+	 [[node PyFunc (defined at /sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/framework/ops.py:1637) ]]
+	 [[PyFunc/_49]]
+  (1) Invalid argument: ValueError: Failed to sample any valid grasp.
+Traceback (most recent call last):
+
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 217, in __call__
+    ret = func(*args)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 111, in sample
+    grasps = self._sample(depth, camera, num_samples)
+
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/grasp/image_grasp_sampler.py", line 365, in _sample
+    raise ValueError('Failed to sample any valid grasp.')
+
+ValueError: Failed to sample any valid grasp.
+
+
+	 [[node PyFunc (defined at /sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/framework/ops.py:1637) ]]
+0 successful operations.
+0 derived errors ignored.
+
+Original stack trace for 'PyFunc':
+  File "tools/run_env.py", line 254, in <module>
+    main()
+  File "tools/run_env.py", line 220, in main
+    policy_state = py_policy.get_initial_state(py_env.batch_size)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tf_agents/policies/py_policy.py", line 104, in get_initial_state
+    return self._get_initial_state(batch_size)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tf_agents/policies/py_tf_policy.py", line 155, in _get_initial_state
+    self.initialize(batch_size)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tf_agents/policies/py_tf_policy.py", line 101, in initialize
+    self._construct(batch_size, graph)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tf_agents/policies/py_tf_policy.py", line 92, in _construct
+    self._time_step, self._policy_state, seed=self._seed)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tf_agents/policies/tf_policy.py", line 176, in action
+    seed=seed)
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/policies/grasp_policy.py", line 87, in _action
+    seed)
+  File "/cvgl2/u/qinzy/research/kptog/tools/../robovat/policies/grasp_policy.py", line 59, in __call__
+    self._sampler.sample, [depth, intrinsics, num_samples], tf.float32)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/util/deprecation.py", line 324, in new_func
+    return func(*args, **kwargs)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 488, in py_func
+    return py_func_common(func, inp, Tout, stateful, name=name)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 470, in py_func_common
+    func=func, inp=inp, Tout=Tout, stateful=stateful, eager=False, name=name)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/script_ops.py", line 293, in _internal_py_func
+    input=inp, token=token, Tout=Tout, name=name)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/ops/gen_script_ops.py", line 159, in py_func
+    "PyFunc", input=input, token=token, Tout=Tout, name=name)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/framework/op_def_library.py", line 793, in _apply_op_helper
+    op_def=op_def)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/util/deprecation.py", line 507, in new_func
+    return func(*args, **kwargs)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/framework/ops.py", line 3222, in create_op
+    attrs, op_def, compute_device)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/framework/ops.py", line 3291, in _create_op_internal
+    op_def=op_def)
+  File "/sailhome/qinzy/anaconda3/envs/kptog/lib/python3.6/site-packages/tensorflow_core/python/framework/ops.py", line 1637, in __init__
+    self._traceback = tf_stack.extract_stack()
+
+run_random.sh: 9: run_random.sh: ingle: not found
