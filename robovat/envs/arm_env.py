@@ -131,8 +131,8 @@ class HammerArmEnv(ArmEnv):
     """The environment of robot hammering."""
 
     TARGET_REGION = {
-            'x': 0.3,
-            'y': 0.3,
+            'x': 0.2,
+            'y': 0.2,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,

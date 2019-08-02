@@ -31,7 +31,7 @@ class AntipodalGraspSampler(object):
                  action_spec,
                  config,
                  debug=False):
-        debug = debug and config.DEBUG 
+        debug = debug and config.DEBUG
 
         self._time_step_spec = time_step_spec
         self._action_spec = action_spec
@@ -101,40 +101,40 @@ class Grasp4DofRandomPolicy(random_tf_policy.RandomTFPolicy):
 class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
     TARGET_REGION = {
-            'x': 0.3,
-            'y': 0.3,
-            'z': 0.1,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': np.pi,
-            }
+        'x': 0.2,
+        'y': 0.2,
+        'z': 0.1,
+        'roll': 0,
+        'pitch': 0,
+        'yaw': np.pi,
+    }
 
-    def __init__(self, 
+    def __init__(self,
                  time_step_spec,
                  action_spec,
                  config=None,
                  debug=False):
 
         super(HammerPointCloudPolicy, self).__init__(
-                time_step_spec,
-                action_spec,
-                config=config)
+            time_step_spec,
+            action_spec,
+            config=config)
 
         self.table_pose = Pose(self.config.SIM.TABLE.POSE)
         pose = Pose.uniform(**self.TARGET_REGION)
         self.target_pose = get_transform(
-                source=self.table_pose).transform(pose)
+            source=self.table_pose).transform(pose)
 
         self.env_collision_points = np.array(
-                [[0.15, 0.15, 0.4], [0.2, 0.2, 0.4],
-                 [0.1, 0.0, 0.4], [0.1, 0.1, 0.4]], 
-                dtype=np.float32)
+            [[0.15, 0.15, 0.4], [0.2, 0.2, 0.4],
+             [0.1, 0.0, 0.4], [0.1, 0.1, 0.4]],
+            dtype=np.float32)
 
     def _concat_actions(self, actions, num_dof=4):
         actions = tf.expand_dims(
-                tf.concat(
-                    [tf.reshape(action, [-1, num_dof]) 
-                        for action in actions],
+            tf.concat(
+                [tf.reshape(action, [-1, num_dof])
+                 for action in actions],
                 axis=0), 0)
         return actions
 
@@ -142,47 +142,47 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return np.pi / 2
 
     def _rot_mat(self, rz):
-        zero = tf.constant(0.0, 
-                dtype=tf.float32)
-        one = tf.constant(1.0, 
-                dtype=tf.float32)
+        zero = tf.constant(0.0,
+                           dtype=tf.float32)
+        one = tf.constant(1.0,
+                          dtype=tf.float32)
 
         mat = tf.reshape(
-                [[tf.cos(rz), -tf.sin(rz), zero],
-                 [tf.sin(rz), tf.cos(rz), zero],
-                 [zero, zero, one]], [3, 3])
+            [[tf.cos(rz), -tf.sin(rz), zero],
+             [tf.sin(rz), tf.cos(rz), zero],
+             [zero, zero, one]], [3, 3])
         return mat
 
-    def _action(self, 
-                time_step, 
-                policy_state, 
-                seed, 
+    def _action(self,
+                time_step,
+                policy_state,
+                seed,
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
 
-        g_kp, f_kp, c_kp = tf.py_func(search_keypoints, 
-                [point_cloud_tf], 
-                [tf.float32, tf.float32, tf.float32])
+        g_kp, f_kp, c_kp = tf.py_func(search_keypoints,
+                                      [point_cloud_tf],
+                                      [tf.float32, tf.float32, tf.float32])
 
         action, score = forward(
-                point_cloud_tf * scale, g_kp * scale)
+            point_cloud_tf * scale, g_kp * scale)
 
         action = tf.expand_dims(action, 0)
-        xyz, rx, ry, rz = tf.split(action, 
-                [3, 1, 1, 1], axis=1)
+        xyz, rx, ry, rz = tf.split(action,
+                                   [3, 1, 1, 1], axis=1)
         action_4dof = tf.concat([xyz / scale, rz], axis=1)
 
         c = tf.reduce_mean(
-                tf.squeeze(point_cloud_tf), axis=0)
+            tf.squeeze(point_cloud_tf), axis=0)
 
         g_kp = tf.squeeze(g_kp)
         f_kp = tf.squeeze(f_kp)
 
         v_cf = tf.reshape(f_kp - c, [3])
         v_cg = tf.reshape(g_kp - c, [3])
-        s = tf.sign(v_cg[0] * v_cf[1] - 
-                v_cg[1] * v_cf[0])
-    
+        s = tf.sign(v_cg[0] * v_cf[1] -
+                    v_cg[1] * v_cf[0])
+
         action_xy = tf.squeeze(action_4dof[:, :2])
         v_af = -action_xy + f_kp[:2]
         d = tf.linalg.norm(v_af)
@@ -190,54 +190,54 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         start_rz = tf.atan2(y=v_af[1], x=v_af[0])
 
         pre_start_pose = tf.concat([
-                action_xy, tf.constant([0.4], 
-                        dtype=tf.float32), [start_rz]],
-                axis=0)
+            action_xy, tf.constant([0.4],
+                                   dtype=tf.float32), [start_rz]],
+                                   axis=0)
 
         start_pose = tf.concat([
-                action_xy, tf.constant([0.4], 
-                        dtype=tf.float32), 
-                -s * tf.constant([np.pi/2],
-                    dtype=tf.float32)],
-                axis=0)
+            action_xy, tf.constant([0.4],
+                                   dtype=tf.float32),
+            -s * tf.constant([np.pi / 2],
+                             dtype=tf.float32)],
+            axis=0)
 
         c_kp = c_kp - action_4dof[:, :3]
-        drz = -s * tf.constant(np.pi/2) - start_rz
+        drz = -s * tf.constant(np.pi / 2) - start_rz
         rot_mat = self._rot_mat(drz)
-        c_kp = tf.matmul(c_kp, 
-                tf.transpose(rot_mat, [1, 0]))
-        
+        c_kp = tf.matmul(c_kp,
+                         tf.transpose(rot_mat, [1, 0]))
+
         t_xyz = self.target_pose.position
         meta_pose = tf.add(
-                tf.constant(
-                    [t_xyz.x + 0.05, t_xyz.y, 0, 0], 
-                    dtype=tf.float32),
-                tf.add(
-                    tf.constant([0, 1, 0, 0],
-                        dtype=tf.float32) * d,
-                    tf.constant([0, 0, 0, -np.pi/2],
-                        dtype=tf.float32)) * s)
+            tf.constant(
+                [t_xyz.x + 0.05, t_xyz.y, 0, 0],
+                dtype=tf.float32),
+            tf.add(
+                tf.constant([0, 1, 0, 0],
+                            dtype=tf.float32) * d,
+                tf.constant([0, 0, 0, -np.pi / 2],
+                            dtype=tf.float32)) * s)
 
         pre_target_pose = meta_pose + tf.constant(
-                [0, 0, 0.4, 0], dtype=tf.float32)
+            [0, 0, 0.4, 0], dtype=tf.float32)
 
         action_task = solve_actions(
-                start_pose, pre_target_pose,
-                self.config.SIM.TASK.T - 3,
-                c_kp, self.env_collision_points)
-               
+            start_pose, pre_target_pose,
+            self.config.SIM.TASK.T - 3,
+            c_kp, self.env_collision_points)
+
         target_pose = meta_pose + tf.constant(
-                [0, 0, 0.2, 0], dtype=tf.float32)
+            [0, 0, 0.2, 0], dtype=tf.float32)
 
         action_task = self._concat_actions(
-                [start_pose, action_task, 
-                    pre_target_pose, target_pose])
+            [start_pose, action_task,
+             pre_target_pose, target_pose])
 
-        delta_pose = tf.constant([[0, 0, 0, 1]], 
-                dtype=tf.float32) * (
-                        action_4dof[0, 3] - start_rz)
+        delta_pose = tf.constant([[0, 0, 0, 1]],
+                                 dtype=tf.float32) * (
+            action_4dof[0, 3] - start_rz)
         action_task = action_task + delta_pose
-       
+
         action = {'grasp': action_4dof,
                   'task': action_task}
 

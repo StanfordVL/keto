@@ -325,7 +325,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                         pose = Pose(
                                [[x, y, z], 
                                    [0, np.pi, angle]])
-                        self.plot_pose(pose, 0.1)
+                        # self.plot_pose(pose, 0.1)
                         self.robot.move_to_gripper_pose(
                                 pose, straight_line=True, 
                                 timeout=2,
