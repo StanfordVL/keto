@@ -15,6 +15,7 @@ from cvae.discriminator import GraspDiscriminator, KeypointDiscriminator
 import matplotlib as mpl
 mpl.use('Agg')
 
+
 logging.basicConfig(level=logging.DEBUG)
 
 
