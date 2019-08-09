@@ -13,7 +13,7 @@ from robovat.networks import GQCNN
 from robovat.policies import cem_policy
 from robovat.policies import point_cloud_policy
 
-from keypoints.cvae import forward_grasp
+from keypoints.cvae.build import forward_grasp
 
 nest = tf.contrib.framework.nest
 

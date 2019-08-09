@@ -19,8 +19,8 @@ from robovat.math import solver_hammering
 
 from robovat.math import Pose, get_transform
 
-from keypoints.cvae import forward_keypoint
-from keypoints.cvae import forward_grasp
+from keypoints.cvae.build import forward_keypoint
+from keypoints.cvae.build import forward_grasp
 
 nest = tf.contrib.framework.nest
 
