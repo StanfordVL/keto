@@ -13,7 +13,7 @@ from robovat.networks import GQCNN
 from robovat.policies import cem_policy
 from robovat.policies import point_cloud_policy
 
-from cvae.build import forward
+from keypoints.cvae import forward_grasp
 
 nest = tf.contrib.framework.nest
 
@@ -112,7 +112,7 @@ class Grasp4DofPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 seed, 
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
-        action, score = forward(point_cloud_tf * scale)
+        action, score = forward_grasp(point_cloud_tf * scale)
         action = tf.expand_dims(action, 0)
         xyz, rx, ry, rz = tf.split(action, 
                 [3, 1, 1, 1], axis=1)

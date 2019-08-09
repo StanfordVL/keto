@@ -20,6 +20,9 @@ ACTION:
     T: 8
     LOW:  [0.60, 0.00, 0.02, 0.00]
     HIGH: [1.50, 0.50, 0.50, 6.29]
+
+  KEYPOINTS:
+    NUM: 2
     
 SIM:
   ARM:
@@ -50,10 +53,10 @@ SIM:
     USE_RANDOM_SAMPLE: 1
     RESAMPLE_N_EPISODES: 1
 
-  SLOT_PATH: 'data/sim/tool_hammer/slot.urdf'
-  PEG_PATH: 'data/sim/tool_hammer/peg_easy.urdf'
+  SLOT_PATH: 'data/sim/tool_hammer/slot_hard.urdf'
+  PEG_PATH: 'data/sim/tool_hammer/peg_hard.urdf'
 
-  SLOT_OFFSET: 0.1
+  SLOT_OFFSET: -0.15
   HAMMER_HEIGHT_OFFSET: 0.115
  
   Z_OFFSET: 0.1

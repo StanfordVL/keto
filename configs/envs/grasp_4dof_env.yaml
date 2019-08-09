@@ -36,7 +36,7 @@ SIM:
   GRASPABLE:
     PATHS: [
     #'data/sim/procedural/000000/*.urdf',
-    'data/sim/procedural/000000/*.urdf'
+    'data/sim/procedural/*/*.urdf'
     ]
     POSE:
       X: 0.1

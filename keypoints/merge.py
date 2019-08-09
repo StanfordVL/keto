@@ -1,0 +1,63 @@
+import tensorflow as tf
+import argparse
+
+from cvae.build import build_grasp_inference_graph
+from cvae.build import build_keypoint_inference_graph
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--model',
+                    type=str,
+                    required=True)
+parser.add_argument('--vae', 
+                    type=str)
+parser.add_argument('--discr',
+                    type=str)
+parser.add_argument('--grasp',
+                    type=str)
+parser.add_argument('--keypoint',
+                    type=str)
+parser.add_argument('--output',
+                    type=str,
+                    default='./runs/cvae_model')
+args = parser.parse_args()
+
+if args.model == 'grasp':
+    build_grasp_inference_graph()
+elif args.model == 'keypoint':
+    build_keypoint_inference_graph()
+elif args.model == 'grasp_keypoint':
+    build_grasp_inference_graph()
+    build_keypoint_inference_graph()
+else:
+    raise ValueError(args.model)
+
+with tf.Session() as sess:
+
+    vars = tf.global_variables()
+
+    if args.model in ['grasp', 'keypoint']:
+        vars_vae = [var for var in vars if 'vae' in var.name]
+        vars_discr = [var for var in vars if 'discr' in var.name]
+
+        saver = tf.train.Saver(var_list=vars)
+        saver_vae = tf.train.Saver(var_list=vars_vae)
+        saver_discr = tf.train.Saver(var_list=vars_discr)
+
+        saver_vae.restore(sess, args.vae)
+        saver_discr.restore(sess, args.discr)
+        saver.save(sess, args.output)
+
+    elif args.model == 'grasp_keypoint':
+        vars_grasp = [var for var in vars if 'grasp' in var.name]
+        vars_keypoint = [var for var in vars if 'keypoint' in var.name]
+
+        saver = tf.train.Saver(var_list=vars)
+        saver_grasp = tf.train.Saver(var_list=vars_grasp)
+        saver_keypoint = tf.train.Saver(var_list=vars_keypoint)
+
+        saver_grasp.restore(sess, args.grasp)
+        saver_keypoint.restore(sess, args.keypoint)
+        saver.save(sess, args.output)
+
+    else:
+        raise ValueError
