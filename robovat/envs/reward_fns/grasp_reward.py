@@ -53,6 +53,7 @@ class GraspReward(reward_fn.RewardFn):
 
         if self._check_cornercase():
             logger.debug('Ignore cornercase')
+            success = -1
         else:
             self._update_history(success)
             success_rate = np.mean(self.history or [-1])
@@ -61,7 +62,7 @@ class GraspReward(reward_fn.RewardFn):
         return success, self.terminate_after_grasp
 
     def _check_cornercase(self):
-        is_cnc = self.env.timeout
+        is_cnc = self.env.timeout or self.env.grasp_cornercase
         return is_cnc
 
     def _update_history(self, success):

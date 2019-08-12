@@ -45,45 +45,37 @@ class GraspDiscriminator(Network):
 
 class KeypointDiscriminator(Network):
 
-    def build_model(self, x, ks, group_size=512):
-        """Builds the vae keypoint encoder
-
-        Args:
-            x: (B, N, 1, 3) Input point cloud
-            ks: [(B, K1, 3), (B, K2, 3), ...]
-            List of different type of keypoints
-
-        Returns:
-            p: (B, 1) Pre-sigmoid logit
-        """
-
+    def build_model(self, x, ks, v=None):
         with tf.variable_scope('keypoint_discriminator',
                                reuse=tf.AUTO_REUSE):
+            g_kp, f_kp = [tf.squeeze(k, 1) for k in ks]
 
-            mean_x = tf.reduce_mean(x,
-                                    axis=1, keepdims=True)
-            x = x - mean_x
+            vx, vy, vz = tf.split(f_kp - g_kp, 3, axis=1)
+            rz = tf.atan2(vy, vx)
+            rx = tf.zeros_like(rz)
+            pose_g = tf.concat([g_kp, rx, rx, rz], axis=1)
+            pose_f = tf.concat([f_kp, rx, rx, rz], axis=1)
 
-            mean_r = tf.reduce_mean(
+            pose_v = tf.concat([rx, rx, rx, rx, rx, rz], axis=1)
+
+            x_g = tf.expand_dims(
+                  align(tf.squeeze(x, 2), pose_g), 2)
+            x_f = tf.expand_dims(
+                  align(tf.squeeze(x, 2), pose_f), 2)
+
+            mean_rg = tf.reduce_mean(
                 tf.linalg.norm(
-                    x, axis=3, keepdims=True),
+                    x_g, axis=3, keepdims=True),
                 axis=1, keepdims=True)
-            x = x / (mean_r + 1e-6)
+            mean_rf = tf.reduce_mean(
+                tf.linalg.norm(
+                    x_f, axis=3, keepdims=True),
+                axis=1, keepdims=True)
 
-            ks = [tf.expand_dims(k, axis=2) for k in ks]
+            x_g = x_g / (mean_rg + mean_rf + 1e-6)
+            x_f = x_f / (mean_rg + mean_rf + 1e-6)
 
-            num_keypoints = [k.get_shape().as_list()[1] for k in ks]
-
-            ks = [(k - mean_x) / (mean_r + 1e-6) for k in ks]
-
-            _, num_points, _, _ = x.get_shape().as_list()
-
-            ks_concat = tf.concat(ks, axis=1)
-            x = self.group(tf.squeeze(x, 2), 
-                           tf.squeeze(ks_concat, 2), 
-                           group_size)
-            x = x - ks_concat
-            x = tf.transpose(x, [0, 2, 1, 3])
+            x = tf.concat([x_g, x_f], axis=1)
 
             x = self.conv_layer(x, 16, name='conv1_1')
             x = self.conv_layer(x, 16, name='conv1_2')
@@ -91,18 +83,28 @@ class KeypointDiscriminator(Network):
             x = self.conv_layer(x, 32, name='conv2_1')
             x = self.conv_layer(x, 32, name='conv2_2')
 
-            x = self.conv_layer(x, 32, name='conv5_1')
-            x = self.conv_layer(x, 512, name='conv5_2')
+            x = self.conv_layer(x, 64, name='conv3_1')
+            x = self.conv_layer(x, 64, name='conv3_2')
 
-            x = tf.reduce_max(x, axis=1, keepdims=False)
+            x = self.conv_layer(x, 512, name='conv4_1')
 
-            xs = tf.split(x, num_keypoints, axis=1)
-            xs = [tf.reduce_mean(x, axis=1) for x in xs]
-            
-            x = tf.concat(xs, axis=1)
+            x_g, x_f = tf.split(x, 2, axis=1)
+
+            x_g = tf.reduce_max(x_g, [1, 2], keepdims=False)
+            x_f = tf.reduce_max(x_f, [1, 2], keepdims=False)
+
+            x = tf.concat([x_g, x_f], axis=1)
+
+            if not v == None:
+                x_v = align(v, pose_v)
+                x_v = self.fc_layer(x_v, 32, name='v_fc1')
+                x_v = self.fc_layer(x_v, 64, name='v_fc2')
+                x_v = self.fc_layer(x_v, 128, name='v_fc3')
+                x = tf.concat([x, x_v], axis=1)
 
             x = self.fc_layer(x, 256, name='fc1')
             x = self.fc_layer(x, 256, name='fc2')
-            o = self.fc_layer(x, 1, linear=True, name='out')
+            p = self.fc_layer(x, 1, linear=True, name='out')
 
-        return o
+            return p
+

@@ -10,7 +10,7 @@ from robovat.envs.reward_fns import reward_fn
 from robovat.utils.logging import logger
 
 
-class HammerReward(reward_fn.RewardFn):
+class PushReward(reward_fn.RewardFn):
     """Reward function of the environments."""
     
     def __init__(self,
@@ -33,20 +33,33 @@ class HammerReward(reward_fn.RewardFn):
 
     def on_episode_start(self):
         """Called at the start of each episode."""
-        self.target = self.env.simulator.bodies[self.target_name]
-        self.target_pose_init = np.array(
-                self.target.pose.position)
+        self.target = []
+        self.target_pose_init = []
+
+        for target_name in self.target_name:
+            target = self.env.simulator.bodies[target_name]
+            target_pose_init = np.array(
+                target.pose.position)
+            self.target.append(target)
+            self.target_pose_init.append(target_pose_init)
+
         self.graspable = self.env.simulator.bodies[self.graspable_name]
         self.env.timeout = False
 
     def get_reward(self):
         """Returns the reward value of the current step."""
         if self.env.simulator:
-            self.env.simulator.wait_until_stable(self.target)
-            target_pose = np.array(self.target.pose.position)
-            hammer_depth = target_pose[0] - self.target_pose_init[0]
-            success = hammer_depth > 0.01 #and hammer_depth <= 0.03
-            logger.debug('Hammer depth: %.3f', hammer_depth)
+            all_trans = []
+            for target, pose_init in zip(self.target, self.target_pose_init):
+                self.env.simulator.wait_until_stable(target)
+                target_pose = np.array(target.pose.position)
+                trans = target_pose[0] - pose_init[0]
+                all_trans.append(trans)
+            min_trans = np.amin(all_trans)
+
+            success = min_trans > 0.05
+
+            logger.debug('Minimum trans: %.3f', min_trans)
         else:
             raise NotImplementedError
 

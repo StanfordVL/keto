@@ -51,13 +51,14 @@ class GraspEncoder(Network):
 
 class KeypointEncoder(Network):
 
-    def build_model(self, x, ks):
+    def build_model(self, x, ks, v=None):
         """Builds the vae keypoint encoder
 
         Args:
             x: (B, N, 1, 3) Input point cloud
             ks: [(B, K1, 3), (B, K2, 3), ...]
             List of different type of keypoints
+            v: (B, NV, 3) Functional vector
 
         Returns:
             z: (B, 2*D) Mean and var of the latent
@@ -104,8 +105,16 @@ class KeypointEncoder(Network):
 
             ks = [tf.reduce_max(k, axis=[1, 2], keepdims=False) for k in ks]
             x = tf.concat([x] + ks, axis=1)
-
             x = self.fc_layer(x, 256, name='fc1')
+
+            if not v == None:
+                v = v / (1e-6 + tf.linalg.norm(
+                    v, axis=-1, keepdims=True))
+                v = self.fc_layer(v, 32, name='v_fc1')
+                v = self.fc_layer(v, 64, name='v_fc2')
+                v = self.fc_layer(v, 64, name='v_fc3')
+                x = tf.concat([x, v], axis=1)
+
             x = self.fc_layer(x, 256, name='fc2')
             z = self.fc_layer(x, 4, linear=True, name='out')
 

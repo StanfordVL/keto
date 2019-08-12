@@ -11,7 +11,7 @@ import time
 from robovat.envs import arm_env
 from robovat.envs.observations import camera_obs
 from robovat.envs.reward_fns.grasp_reward import GraspReward
-from robovat.envs.reward_fns.hammer_reward import HammerReward
+from robovat.envs.reward_fns.reach_reward import ReachReward
 from robovat.grasp import Grasp2D
 from robovat.math import Pose
 from robovat.math import get_transform
@@ -23,8 +23,8 @@ import matplotlib.pyplot as plt
 GRASPABLE_NAME = 'graspable'
 
 
-class HammerPointCloudEnv(arm_env.HammerArmEnv):
-    """Top-down 4-DoF grasping environment."""
+class ReachPointCloudEnv(arm_env.ReachArmEnv):
+    """Top-down 4-DoF reaching environment."""
 
     def __init__(self,
                  simulator=None,
@@ -69,11 +69,11 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                 name='grasp_reward',
                 end_effector_name=sawyer.SawyerSim.ARM_NAME,
                 graspable_name=GRASPABLE_NAME,
-                target_name='peg'),
-            HammerReward(
-                name='hammer_reward',
+                target_name='target'),
+            ReachReward(
+                name='reach_reward',
                 graspable_name=GRASPABLE_NAME,
-                target_name='peg')
+                target_name='target')
         ]
 
         if self.simulator:
@@ -99,7 +99,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                 % (self.config.SIM.GRASPABLE.PATHS))
             logger.debug('Found %d graspable objects.', num_graspable_paths)
 
-        super(HammerPointCloudEnv, self).__init__(
+        super(ReachPointCloudEnv, self).__init__(
             observations=observations,
             reward_fns=reward_fns,
             simulator=self.simulator,
@@ -141,7 +141,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
     def reset_scene(self):
         """Reset the scene in simulation or the real world.
         """
-        super(HammerPointCloudEnv, self).reset_scene()
+        super(ReachPointCloudEnv, self).reset_scene()
 
         # Reload graspable object.
         if self.config.SIM.GRASPABLE.RESAMPLE_N_EPISODES:
@@ -196,7 +196,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
     def reset_robot(self):
         """Reset the robot in simulation or the real world.
         """
-        super(HammerPointCloudEnv, self).reset_robot()
+        super(ReachPointCloudEnv, self).reset_robot()
         self.robot.reset(self.config.ARM.OFFSTAGE_POSITIONS)
 
     def feedback(self, reward):
@@ -214,7 +214,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
         #
         # Hammering
         #
-        self._execute_action_hammering(action_task)
+        self._execute_action_reaching(action_task)
 
     def _execute_action_grasping(self, action):
         """Execute the grasp action.
@@ -288,8 +288,8 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
                             lateral_friction=1000,
-                            rolling_friction=100,
-                            spinning_friction=100)
+                            rolling_friction=1000,
+                            spinning_friction=1000)
                         self.robot.r_finger_tip.set_dynamics(
                             lateral_friction=1000,
                             rolling_friction=1000,
@@ -297,13 +297,8 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                         self.table.set_dynamics(
                             lateral_friction=1)
 
-                    self.simulator.wait_until_stable(self.graspable) 
-                    self.grasp_success = self.simulator.check_contact(
-                           self.robot.arm,
-                           self.graspable)
-
-    def _execute_action_hammering(self, action):
-        """Execute the hammering action.
+    def _execute_action_reaching(self, action):
+        """Execute the reaching action.
         """
         phase = 'initial'
         if self.simulator:
@@ -326,7 +321,6 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     # move the tool based on action
                     # self._draw_path(action)
                     num_move_steps = action.shape[0]
-                    _, _, _, drz = action[0]
                     for step in range(1, num_move_steps):
                         if self.timeout:
                             break
@@ -359,46 +353,15 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                         while(not ready):
                             if self.timeout:
                                 break
-                            if time.time() - time_start > 2:
-                                self.timeout = True
+                            self.timeout = (time.time() - time_start > 2 
+                                    and step != num_move_steps - 1)
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(
                                 phase, num_action_steps)
-            
-                     
+
                 elif phase == 'start':
-                    self._wait_until_ready(phase, num_action_steps)
-
-                    self.simulator.wait_until_stable(self.graspable) 
-                    current_grasp_success = self.simulator.check_contact(
-                           self.robot.arm,
-                           self.graspable)
-
-                    if self.grasp_success and not current_grasp_success:
-                        self.grasp_cornercase = True
-                    else:
-                        self.grasp_cornercase = False
-                
-                    wrist_joint_angle = self.robot.joint_positions['right_j6']
-                    positions = {'right_j6': wrist_joint_angle - drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
-                                                       timeout=2)
-
-                    self._wait_until_ready(phase, num_action_steps)
-                    positions = {'right_j6': wrist_joint_angle + drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
-                                                       timeout=2)
-
-                    self._wait_until_ready(phase, num_action_steps)
-                    positions = {'right_j6': wrist_joint_angle - drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
-                                                       timeout=2)
-
-                    self._wait_until_ready(phase, num_action_steps)
-                    positions = {'right_j6': wrist_joint_angle + drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
-                                                       timeout=2)
+                    self.grasp_cornercase = False
 
                 elif phase == 'end':
                     pass
@@ -461,6 +424,10 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
             The boolean value indicating if the current phase is ready.
         """
         if self.simulator:
+            if phase == 'prestart':
+                if self.simulator.check_contact(self.robot.arm, self.ceil):
+                    logger.debug('The gripper contacts the ceil')
+                    return True
             if phase == 'start':
                 if num_action_steps >= self.config.SIM.MAX_ACTION_STEPS:
                     logger.debug('The grasping motion is stuck.')

@@ -10,7 +10,7 @@ from robovat.envs.reward_fns import reward_fn
 from robovat.utils.logging import logger
 
 
-class HammerReward(reward_fn.RewardFn):
+class ReachReward(reward_fn.RewardFn):
     """Reward function of the environments."""
     
     def __init__(self,
@@ -45,8 +45,8 @@ class HammerReward(reward_fn.RewardFn):
             self.env.simulator.wait_until_stable(self.target)
             target_pose = np.array(self.target.pose.position)
             hammer_depth = target_pose[0] - self.target_pose_init[0]
-            success = hammer_depth > 0.01 #and hammer_depth <= 0.03
-            logger.debug('Hammer depth: %.3f', hammer_depth)
+            success = hammer_depth > 0.04
+            logger.debug('Target trans: %.3f', hammer_depth)
         else:
             raise NotImplementedError
 
@@ -56,7 +56,7 @@ class HammerReward(reward_fn.RewardFn):
         else:
             self._update_history(success)
             success_rate = np.mean(self.history or [-1])
-            logger.debug('Hammer Success: %r, Success Rate %.3f',
+            logger.debug('Reach Success: %r, Success Rate %.3f',
                          success, success_rate)
         return success, self.terminate_after_grasp
 

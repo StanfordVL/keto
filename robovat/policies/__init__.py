@@ -2,3 +2,5 @@ from .grasp_policy import AntipodalGraspSampler
 from .grasp_policy import Grasp4DofRandomPolicy
 from .grasp_point_cloud_policy import Grasp4DofPointCloudPolicy
 from .hammer_point_cloud_policy import HammerPointCloudPolicy
+from .push_point_cloud_policy import PushPointCloudPolicy
+from .reach_point_cloud_policy import ReachPointCloudPolicy

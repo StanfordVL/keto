@@ -22,7 +22,7 @@ ACTION:
     HIGH: [1.50, 0.50, 0.50, 6.29]
 
   KEYPOINTS:
-    NUM: 2
+    NUM: 3
     
 SIM:
   ARM:
@@ -53,13 +53,12 @@ SIM:
     USE_RANDOM_SAMPLE: 1
     RESAMPLE_N_EPISODES: 1
 
-  SLOT_PATH: 'data/sim/envs/tool_hammer/slot_hard.urdf'
-  PEG_PATH: 'data/sim/envs/tool_hammer/peg_hard.urdf'
+  TARGET_PATH: 'data/sim/envs/tool_reach/cube.urdf'
+  WALL_PATH: 'data/sim/envs/tool_reach/wall.urdf'
+  CEIL_PATH: 'data/sim/envs/tool_reach/ceil.urdf'
 
-  SLOT_OFFSET: -0.15
   HAMMER_HEIGHT_OFFSET: 0.115
  
-  Z_OFFSET: 0.2
-
+  Z_OFFSET: 0.1
 
   MAX_ACTION_STEPS: 4000

@@ -57,7 +57,7 @@ class GraspDecoder(Network):
 
 class KeypointDecoder(Network):
 
-    def build_model(self, x, z):
+    def build_model(self, x, z, nv=0):
         with tf.variable_scope('vae_keypoint_decoder',
                                reuse=tf.AUTO_REUSE):
 
@@ -105,7 +105,17 @@ class KeypointDecoder(Network):
                                                  linear=True) * (
                 mean_r + 1e-6) + mean_x
 
+            if nv:
+                x_v = self.conv_layer(x, 256, name='conv8_1')
+                x_v = tf.reduce_max(x_v, axis=1, keepdims=True)
+                x_v = self.conv_layer(x_v, 3 * nv, name='conv8_2',
+                                      linear=True)
+                funct_vect = tf.reshape(x_v, [-1, nv, 3])
+            else:
+                funct_vect = None
+
             keypoints = [grasping_keypoints,
                          functional_keypoints]
             keypoints = [tf.squeeze(k, 2) for k in keypoints]
-        return keypoints
+        return keypoints, funct_vect
+

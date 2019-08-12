@@ -4,6 +4,6 @@ python tools/run_env.py \
   --policy HammerPointCloudPolicy \
   --policy_config configs/policies/hammer_point_cloud_policy.yaml \
   --problem HammerPointCloudProblem \
-  --episodic 0 --num_episodes 4096 --debug 0 \
-  --output episodes/hammer_point_cloud \
-  --checkpoint keypoints/runs/cvae_model
+  --episodic 0 --num_episodes 8192 --debug 1 \
+  --output episodes/hammer_point_cloud_second \
+  --checkpoint keypoints/save/hammer/cvae_model

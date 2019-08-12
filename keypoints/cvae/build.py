@@ -129,9 +129,10 @@ def visualize_keypoints(point_cloud,
     plt.close()
     return
 
-def rectify_keypoints(point_cloud, 
-                      grasp_point, 
-                      funct_point, 
+
+def rectify_keypoints(point_cloud,
+                      grasp_point,
+                      funct_point,
                       grasp_clusters=10,
                       funct_clusters=32):
 
@@ -141,7 +142,7 @@ def rectify_keypoints(point_cloud,
         random_state=0).fit(p)
     centers = kmeans.cluster_centers_
     index = np.argsort(
-            np.linalg.norm(grasp_point - centers, axis=1))[0]
+        np.linalg.norm(grasp_point - centers, axis=1))[0]
     grasp_point = centers[np.newaxis, index].astype(np.float32)
 
     kmeans = KMeans(
@@ -151,7 +152,7 @@ def rectify_keypoints(point_cloud,
     hull = ConvexHull(centers[:, :2])
     hull = centers[hull.vertices]
     hull_index = np.argsort(
-            np.linalg.norm(funct_point - hull, axis=1))[0]
+        np.linalg.norm(funct_point - hull, axis=1))[0]
     funct_point = hull[np.newaxis, hull_index].astype(np.float32)
 
     return grasp_point, funct_point
@@ -345,25 +346,31 @@ def build_grasp_training_graph(num_points=1024):
 
 def build_keypoint_training_graph(num_points=1024,
                                   num_grasp_point=1,
-                                  num_funct_point=1):
+                                  num_funct_point=1,
+                                  num_funct_vect=0):
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_points, 3])
     grasp_point_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_grasp_point, 3])
     funct_point_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_funct_point, 3])
+    funct_vect_tf = None
+    if num_funct_vect:
+        funct_vect_tf = tf.placeholder(dtype=tf.float32,
+                                       shape=[None, num_funct_vect, 3])
+
     keypoints = [grasp_point_tf, funct_point_tf]
     keypoints_label_tf = tf.placeholder(dtype=tf.float32,
                                         shape=[None, 1])
     latent_var = KeypointEncoder().build_model(tf.reshape(
-        point_cloud_tf, (-1, num_points, 1, 3)), keypoints)
+        point_cloud_tf, (-1, num_points, 1, 3)), keypoints, funct_vect_tf)
     z_mean, z_std = tf.split(latent_var, 2, axis=1)
     z = z_mean + z_std * tf.random.normal(tf.shape(z_std))
     z_std = tf.reduce_mean(reduce_std(z, axis=1))
     z_mean = tf.reduce_mean(z_mean)
 
-    keypoints_vae = KeypointDecoder().build_model(tf.reshape(
-        point_cloud_tf, (-1, num_points, 1, 3)), latent_var)
+    keypoints_vae, funct_vect_vae = KeypointDecoder().build_model(tf.reshape(
+        point_cloud_tf, (-1, num_points, 1, 3)), latent_var, num_funct_vect)
 
     [grasp_point_vae, funct_point_vae] = keypoints_vae
 
@@ -372,6 +379,11 @@ def build_keypoint_training_graph(num_points=1024,
 
     loss_vae_funct = tf.reduce_mean(
         tf.abs(funct_point_vae - funct_point_tf))
+
+    loss_vae_funct_vect = tf.constant(0.0, dtype=tf.float32)
+    if num_funct_vect:
+        loss_vae_funct_vect = tf.reduce_mean(
+            tf.abs(funct_vect_vae - funct_vect_tf))
 
     point_cloud_mean = tf.reduce_mean(
         point_cloud_tf, axis=1, keepdims=True)
@@ -382,6 +394,11 @@ def build_keypoint_training_graph(num_points=1024,
     std_gt_funct = tf.reduce_mean(reduce_std(
         funct_point_tf - point_cloud_mean, axis=0))
 
+    std_gt_funct_vect = tf.constant(0.0, dtype=tf.float32)
+    if num_funct_vect:
+        std_gt_funct_vect = tf.reduce_mean(reduce_std(
+            funct_vect_tf, axis=0))
+
     miu, sigma = tf.split(latent_var, 2, axis=1)
     loss_vae_mmd = tf.reduce_mean(tf.square(miu) +
                                   tf.square(sigma) -
@@ -389,7 +406,7 @@ def build_keypoint_training_graph(num_points=1024,
 
     discr_logit = KeypointDiscriminator().build_model(
         tf.reshape(point_cloud_tf, (-1, num_points, 1, 3)),
-        keypoints)
+        keypoints, funct_vect_tf)
 
     loss_discr = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=keypoints_label_tf, logits=discr_logit)
@@ -409,14 +426,17 @@ def build_keypoint_training_graph(num_points=1024,
     training_graph = {'point_cloud_tf': point_cloud_tf,
                       'grasp_point_tf': grasp_point_tf,
                       'funct_point_tf': funct_point_tf,
+                      'funct_vect_tf': funct_vect_tf,
                       'keypoints_label_tf': keypoints_label_tf,
                       'loss_vae_grasp': loss_vae_grasp,
                       'loss_vae_funct': loss_vae_funct,
+                      'loss_vae_funct_vect': loss_vae_funct_vect,
                       'loss_vae_mmd': loss_vae_mmd,
                       'z_mean': z_mean,
                       'z_std': z_std,
                       'std_gt_grasp': std_gt_grasp,
                       'std_gt_funct': std_gt_funct,
+                      'std_gt_funct_vect': std_gt_funct_vect,
                       'loss_discr': loss_discr,
                       'acc_discr': acc_discr,
                       'prec_discr': prec_discr}
@@ -558,7 +578,8 @@ def forward_grasp(point_cloud_tf,
 def forward_keypoint(point_cloud_tf,
                      num_points=1024,
                      num_samples=256,
-                     dist_thres=0.2):
+                     dist_thres=0.2,
+                     num_funct_vect=0):
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -567,9 +588,11 @@ def forward_keypoint(point_cloud_tf,
         [tf.zeros([num_samples, 2], dtype=tf.float32),
          tf.ones([num_samples, 2], dtype=tf.float32)],
         axis=1)
-    keypoints_vae = KeypointDecoder().build_model(
-        tf.reshape(point_cloud,
-                   (-1, num_points, 1, 3)), latent_var)
+    keypoints_vae, funct_vect_vae = KeypointDecoder().build_model(
+            tf.reshape(point_cloud, (-1, num_points, 1, 3)), 
+            latent_var,
+            num_funct_vect)
+
     dist_mat = tf.linalg.norm(
         tf.add(tf.expand_dims(point_cloud, 3),
                -tf.transpose(
@@ -586,30 +609,40 @@ def forward_keypoint(point_cloud_tf,
                    lambda: dist_mask,
                    lambda: dist_mask_slack)
 
-    keypoints_vae = tf.cond(tf.reduce_any(mask),
-                            lambda: [tf.boolean_mask(
-                                k, mask, axis=0) for k in keypoints_vae],
-                            lambda: keypoints_vae)
+    keypoints_vae = tf.cond(
+            tf.reduce_any(mask),
+            lambda: [tf.boolean_mask(k, mask, axis=0) for k in keypoints_vae],
+            lambda: keypoints_vae)
 
-    point_cloud_discr = tf.cond(tf.reduce_any(mask),
-                                lambda: tf.boolean_mask(
-        point_cloud, mask, axis=0),
-        lambda: point_cloud)
+    point_cloud_discr = tf.cond(
+            tf.reduce_any(mask),
+            lambda: tf.boolean_mask(point_cloud, mask, axis=0),
+            lambda: point_cloud)
+
+    if num_funct_vect:
+        funct_vect_vae = tf.cond(
+                tf.reduce_any(mask),
+                lambda: tf.boolean_mask(funct_vect_vae, mask, axis=0),
+                lambda: funct_vect_vae)
 
     score = KeypointDiscriminator().build_model(
-        tf.expand_dims(point_cloud_discr, 2), keypoints_vae)
+        tf.expand_dims(point_cloud_discr, 2), keypoints_vae, funct_vect_vae)
 
     index = tf.argmax(tf.reshape(score, [-1]), 0)
     top_score = score[index]
     top_keypoints = [k[index] for k in keypoints_vae]
 
+    if num_funct_vect:
+        top_funct_vect = funct_vect_vae[index]
+
     grasp_point, funct_point = top_keypoints
-    grasp_point, funct_point = tf.py_func(rectify_keypoints,
-            [point_cloud_tf, grasp_point, funct_point],
-            [tf.float32, tf.float32])
+    [grasp_point, funct_point
+     ] = tf.py_func(rectify_keypoints,
+                    [point_cloud_tf, grasp_point, funct_point],
+                    [tf.float32, tf.float32])
     top_keypoints = [grasp_point, funct_point]
 
-    return top_keypoints, top_score
+    return top_keypoints, top_funct_vect, top_score
 
 
 def train_vae_grasp(data_path,
@@ -668,7 +701,11 @@ def train_vae_grasp(data_path,
                        'Adam' not in var.name]
 
     saver = tf.train.Saver(var_list=var_list_vae)
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+
+    with tf.Session(config=config) as sess:
         sess.run([tf.global_variables_initializer()])
         if model_path:
             running_log.write('vae',
@@ -749,17 +786,21 @@ def train_vae_keypoint(data_path,
                        eval_step=4000,
                        save_step=4000,
                        model_path=None,
-                       optimizer='Adam'):
+                       optimizer='SGDM'):
     loader = KeypointReader(data_path)
-    graph = build_keypoint_training_graph()
+    num_funct_vect = loader.num_funct_vect
+
+    graph = build_keypoint_training_graph(num_funct_vect=num_funct_vect)
     learning_rate = tf.placeholder(tf.float32, shape=())
 
     point_cloud_tf = graph['point_cloud_tf']
     grasp_point_tf = graph['grasp_point_tf']
     funct_point_tf = graph['funct_point_tf']
+    funct_vect_tf = graph['funct_vect_tf']
 
     loss_vae_grasp = graph['loss_vae_grasp']
     loss_vae_funct = graph['loss_vae_funct']
+    loss_vae_funct_vect = graph['loss_vae_funct_vect']
     loss_vae_mmd = graph['loss_vae_mmd'] * 0.01
 
     z_mean = graph['z_mean']
@@ -767,12 +808,14 @@ def train_vae_keypoint(data_path,
 
     std_gt_grasp = graph['std_gt_grasp']
     std_gt_funct = graph['std_gt_funct']
+    std_gt_funct_vect = graph['std_gt_funct_vect']
 
     weight_loss = [tf.nn.l2_loss(var) for var
                    in tf.trainable_variables()]
     weight_loss = tf.reduce_sum(weight_loss) * l2_weight
 
-    loss_vae = loss_vae_grasp + loss_vae_funct + loss_vae_mmd
+    loss_vae = (loss_vae_grasp + loss_vae_funct + 
+                loss_vae_funct_vect + loss_vae_mmd)
     loss = weight_loss + loss_vae
 
     if optimizer == 'Adam':
@@ -793,7 +836,12 @@ def train_vae_keypoint(data_path,
                        'Adam' not in var.name]
 
     saver = tf.train.Saver(var_list=var_list_vae)
-    with tf.Session() as sess:
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+
+    with tf.Session(config=config) as sess:
         sess.run([tf.global_variables_initializer()])
         if model_path:
             running_log.write('vae',
@@ -803,19 +851,25 @@ def train_vae_keypoint(data_path,
         for step in range(steps + 1):
             pos_p_np, pos_k_np = loader.sample_pos_train(batch_size)
             pos_p_np, pos_k_np = loader.random_rotate(pos_p_np, pos_k_np)
-            pos_grasp_np, pos_funct_np = np.split(
-                pos_k_np, [1], axis=1)
+
+            pos_grasp_np, pos_funct_np, pos_funct_vect_np = np.split(
+                pos_k_np, [1, 2], axis=1)
+            feed_dict = {point_cloud_tf: pos_p_np,
+                         grasp_point_tf: pos_grasp_np,
+                         funct_point_tf: pos_funct_np,
+                         learning_rate: get_learning_rate(step, steps)}
+            if num_funct_vect:
+                feed_dict[funct_vect_tf] = pos_funct_vect_np
+
             [_, loss_np, vae_grasp,
-             vae_funct, vae_mmd, weight,
-             std_gt_grasp_np, std_gt_funct_np,
+             vae_funct, vae_funct_vect, vae_mmd, weight,
+             std_gt_grasp_np, std_gt_funct_np, std_gt_funct_vect_np,
              z_mean_np, z_std_np] = sess.run([
                  train_op, loss, loss_vae_grasp,
-                 loss_vae_funct, loss_vae_mmd,
-                 weight_loss, std_gt_grasp, std_gt_funct, z_mean, z_std],
-                feed_dict={point_cloud_tf: pos_p_np,
-                           grasp_point_tf: pos_grasp_np,
-                           funct_point_tf: pos_funct_np,
-                           learning_rate: get_learning_rate(step, steps)})
+                 loss_vae_funct, loss_vae_funct_vect, loss_vae_mmd,
+                 weight_loss, std_gt_grasp, std_gt_funct, std_gt_funct_vect,
+                 z_mean, z_std],
+                feed_dict=feed_dict)
 
             if step % log_step == 0:
                 running_log.write('vae',
@@ -824,6 +878,8 @@ def train_vae_keypoint(data_path,
                                       loss_np, vae_grasp, std_gt_grasp_np) +
                                   'funct: {:.3f}/{:.3f}, '.format(
                                       vae_funct, std_gt_funct_np) +
+                                  'vect: {:.3f}/{:.3f}, '.format(
+                                      vae_funct_vect, std_gt_funct_vect_np) +
                                   'mmd: {:.3f} ({:.3f} {:.3f}), '.format(
                                       vae_mmd, z_mean_np, z_std_np))
 
@@ -879,7 +935,11 @@ def train_gcnn_grasp(data_path,
                         'Adam' not in var.name]
     saver = tf.train.Saver(var_list=var_list_gcnn)
 
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+
+    with tf.Session(config=config) as sess:
         sess.run([tf.global_variables_initializer()])
         if model_path:
             running_log.write('gcnn',
@@ -942,11 +1002,11 @@ def train_gcnn_grasp(data_path,
 
 def load_samples(loader, batch_size, stage, noise_level=0.2):
     if stage == 'train':
-        pos_p_np, pos_k_np = loader.sample_pos_train(batch_size//2)
-        neg_p_np, neg_k_np = loader.sample_neg_train(batch_size//2)
+        pos_p_np, pos_k_np = loader.sample_pos_train(batch_size // 2)
+        neg_p_np, neg_k_np = loader.sample_neg_train(batch_size // 2)
     elif stage == 'val':
-        pos_p_np, pos_k_np = loader.sample_pos_val(batch_size//2)
-        neg_p_np, neg_k_np = loader.sample_neg_val(batch_size//2)
+        pos_p_np, pos_k_np = loader.sample_pos_val(batch_size // 2)
+        neg_p_np, neg_k_np = loader.sample_neg_val(batch_size // 2)
     else:
         raise NotImplementedError
 
@@ -958,9 +1018,9 @@ def load_samples(loader, batch_size, stage, noise_level=0.2):
         axis=0).astype(np.float32)
     p_np = np.concatenate([pos_p_np, neg_p_np], axis=0)
     k_np = np.concatenate([pos_k_np, neg_k_np], axis=0)
-    grasp_np, funct_np = np.split(
-        k_np, [1], axis=1)
-    return p_np, grasp_np, funct_np, label_np
+    grasp_np, funct_np, funct_vect_np = np.split(
+        k_np, [1, 2], axis=1)
+    return p_np, grasp_np, funct_np, funct_vect_np, label_np
 
 
 def train_discr_keypoint(data_path,
@@ -972,14 +1032,17 @@ def train_discr_keypoint(data_path,
                          eval_step=6000,
                          save_step=6000,
                          model_path=None,
-                         optimizer='Adam'):
+                         optimizer='SGDM'):
     loader = KeypointReader(data_path)
+    num_funct_vect = loader.num_funct_vect
+
     graph = build_keypoint_training_graph()
     learning_rate = tf.placeholder(tf.float32, shape=())
 
     point_cloud_tf = graph['point_cloud_tf']
     grasp_point_tf = graph['grasp_point_tf']
     funct_point_tf = graph['funct_point_tf']
+    funct_vect_tf = graph['funct_vect_tf']
 
     keypoints_label_tf = graph['keypoints_label_tf']
     loss_discr = graph['loss_discr']
@@ -1009,7 +1072,11 @@ def train_discr_keypoint(data_path,
                        'Adam' not in var.name]
 
     saver = tf.train.Saver(var_list=var_list_vae)
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+
+    with tf.Session(config=config) as sess:
         sess.run([tf.global_variables_initializer()])
         if model_path:
             running_log.write('discr',
@@ -1017,16 +1084,20 @@ def train_discr_keypoint(data_path,
             saver.restore(sess, model_path)
 
         for step in range(steps + 1):
-            p_np, grasp_np, funct_np, label_np = load_samples(
+            p_np, grasp_np, funct_np, funct_vect_np, label_np = load_samples(
                 loader, batch_size, 'train', 0.2)
+            feed_dict = {point_cloud_tf: p_np,
+                         grasp_point_tf: grasp_np,
+                         funct_point_tf: funct_np,
+                         keypoints_label_tf: label_np,
+                         learning_rate: get_learning_rate(step, steps)}
+            if num_funct_vect:
+                feed_dict.update({funct_vect_tf: funct_vect_np})
+
             [_, loss_np, acc_np, weight
              ] = sess.run([
                  train_op, loss, acc_discr, weight_loss],
-                feed_dict={point_cloud_tf: p_np,
-                           grasp_point_tf: grasp_np,
-                           funct_point_tf: funct_np,
-                           keypoints_label_tf: label_np,
-                           learning_rate: get_learning_rate(step, steps)})
+                feed_dict=feed_dict)
 
             if step % log_step == 0:
                 running_log.write('discr',
@@ -1067,7 +1138,11 @@ def inference_grasp(data_path,
     score = graph['score']
     dist_min = graph['dist_min']
 
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+
+    with tf.Session(config=config) as sess:
         saver = tf.train.Saver()
         saver.restore(sess, model_path)
         pos_p_np, pos_g_np = loader.sample_pos_val(
@@ -1110,17 +1185,21 @@ def inference_keypoint(data_path,
                        num_points=1024):
     loader = KeypointReader(data_path)
     point_cloud_tf = tf.placeholder(
-            dtype=tf.float32, shape=[1, num_points, 3])
+        dtype=tf.float32, shape=[1, num_points, 3])
     keypoints, score = forward_keypoint(point_cloud_tf)
     grasp_point, funct_point = keypoints
-    grasp_point, funct_point = tf.py_func(rectify_keypoints,
-            [point_cloud_tf, grasp_point, funct_point],
-            [tf.float32, tf.float32])
+    [grasp_point, funct_point
+     ] = tf.py_func(rectify_keypoints,
+                    [point_cloud_tf, grasp_point, funct_point],
+                    [tf.float32, tf.float32])
     keypoints = [grasp_point, funct_point]
 
     score = tf.nn.sigmoid(score)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
 
-    with tf.Session() as sess:
+    with tf.Session(config=config) as sess:
         saver = tf.train.Saver()
         saver.restore(sess, model_path)
         pos_p_np, pos_k_np = loader.sample_pos_train(

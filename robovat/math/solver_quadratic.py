@@ -2,17 +2,17 @@ import numpy as np
 import cvxpy as cvx
 
 
-def solver_quadratic(target, force, s, d):
+def solver_quadratic(target, force, theta, d):
     Q = np.array([[1, 0, -1, 0],
                   [0, 1, 0, -1],
                   [-1, 0, 2, 0],
                   [0, -1, 0, 2]])
     xt, yt = target
     alpha, beta = force
-    b = np.array([[-s * beta],
-                  [s * alpha],
-                  [-2 * xt + s * beta],
-                  [-2 * yt - s * alpha]])
+    b = np.array([[0 - alpha*np.cos(theta) - beta*np.sin(theta)],
+                  [0 + alpha*np.sin(theta) - beta*np.cos(theta)],
+                  [-2 * xt + alpha*np.cos(theta) + beta*np.sin(theta)],
+                  [-2 * yt - alpha*np.sin(theta) + beta*np.cos(theta)]])
     c = np.array([[0], [0], [0], [0]])
     x = cvx.Variable([4, 1])
     obj = cvx.Minimize(cvx.quad_form(x, Q) + b.T * x)
@@ -30,8 +30,11 @@ def solver_quadratic(target, force, s, d):
 
 
 def solver_hammering(target, force, s, d, u):
-    g_xy, g_rz = solver_quadratic(target, force, s, d)
+    g_xy, g_rz = solver_quadratic(target, force, s * np.pi/2, d)
     g_drz = -s * u / d
     g_drz = np.reshape(g_drz.astype(np.float32), ())
     return g_xy, g_rz, g_drz
 
+
+def solver_pushing(target, force, theta, d):
+    return solver_quadratic(target, force, theta, d)
