@@ -1,6 +1,7 @@
 # User-defined
 slurm
 runs
+save
 *.png
 *.jpg
 *.hdf5
