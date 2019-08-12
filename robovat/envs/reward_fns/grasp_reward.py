@@ -45,7 +45,7 @@ class GraspReward(reward_fn.RewardFn):
     def get_reward(self):
         """Returns the reward value of the current step."""
         if self.env.simulator:
-            self.env.simulator.wait_until_stable(self.graspable)
+            # self.env.simulator.wait_until_stable(self.graspable)
             success = self.env.simulator.check_contact(
                 self.end_effector, self.graspable)
         else:

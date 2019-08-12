@@ -20,6 +20,11 @@ parser.add_argument(
     help='pretrained model')
 
 parser.add_argument(
+    '--task_name',
+    type=str,
+    default='task')
+
+parser.add_argument(
     '--gpu',
     type=str,
     default='0',
@@ -49,10 +54,12 @@ elif args.train == 'inference_grasp':
         model_path=args.model_path)
 elif args.train == 'vae_keypoint':
     train_vae_keypoint(data_path=args.data_path,
-                       model_path=args.model_path)
+                       model_path=args.model_path,
+                       task_name=args.task_name)
 elif args.train == 'discr_keypoint':
     train_discr_keypoint(data_path=args.data_path,
-                       model_path=args.model_path)
+                         model_path=args.model_path,
+                         task_name=args.task_name)
 elif args.train == 'inference_keypoint':
     inference_keypoint(
         data_path=args.data_path,

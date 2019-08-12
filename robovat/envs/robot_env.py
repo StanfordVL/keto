@@ -155,13 +155,12 @@ class RobotEnv(gym.Env):
         observation = self.get_observation()
 
         reward = 0.0
-
+    
         for reward_fn in self.reward_fns:
             reward_value, termination = reward_fn.get_reward()
             reward += reward_value
 
-            if termination:
-                self._is_done = True
+        self._is_done = True
 
         reward = float(reward)
         self._episode_reward += reward

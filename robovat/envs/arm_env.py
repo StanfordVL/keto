@@ -217,14 +217,14 @@ class PushArmEnv(ArmEnv):
 
     TARGET_REGION = [{
             'x': 0.2,
-            'y': 0.15,
+            'y': 0.17,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
             'yaw': 0},
             {
             'x': 0.2,
-            'y': 0.25,
+            'y': 0.23,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
@@ -284,34 +284,34 @@ class ReachArmEnv(ArmEnv):
 
     TARGET_REGION = {
             'x': 0.25,
-            'y': 0.20,
+            'y': 0.25,
             'z': 0.10,
             'roll': 0,
             'pitch': 0,
-            'yaw': 0}
+            'yaw': np.pi/2}
 
     WALL_REGION = [{
-            'x': 0.25,
-            'y': 0.15,
-            'z': 0.05,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': 0},
-            {
-            'x': 0.25,
+            'x': 0.20,
             'y': 0.25,
             'z': 0.05,
             'roll': 0,
             'pitch': 0,
-            'yaw': 0}]
+            'yaw': np.pi/2},
+            {
+            'x': 0.30,
+            'y': 0.25,
+            'z': 0.05,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}]
 
     CEIL_REGION = {
             'x': 0.25,
-            'y': 0.20,
+            'y': 0.25,
             'z': 0.15,
             'roll': 0,
             'pitch': 0,
-            'yaw': 0}
+            'yaw': np.pi/2}
 
     def __init__(self,
                  observations,

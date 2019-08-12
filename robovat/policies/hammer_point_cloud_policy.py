@@ -162,11 +162,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
 
-        """
-        g_kp, f_kp, _ = tf.py_func(search_keypoints,
-                                [point_cloud_tf],
-                                [tf.float32, tf.float32, tf.float32])
-
+        """ 
         g_kp, f_kp = tf.py_func(hammer_keypoints_heuristic,
                                 [point_cloud_tf],
                                 [tf.float32, tf.float32])

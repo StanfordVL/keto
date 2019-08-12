@@ -131,7 +131,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
         space_keypoints = gym.spaces.Box(
             low=low_keypoints,
             high=high_keypoints,
-            dtype=np.float32) 
+            dtype=np.float32)
 
         self.action_space = gym.spaces.Dict(
             {'grasp': space_grasp,
@@ -282,7 +282,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                     postend.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
                     self.robot.move_to_gripper_pose(
                         postend,
-                        straight_line=True, speed=0.3)
+                        straight_line=True, speed=0.7)
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
@@ -296,6 +296,11 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                             spinning_friction=1000)
                         self.table.set_dynamics(
                             lateral_friction=1)
+
+                    self.simulator.wait_until_stable(self.graspable)
+                    self.grasp_success = self.simulator.check_contact(
+                        self.robot.arm,
+                        self.graspable)
 
     def _execute_action_reaching(self, action):
         """Execute the reaching action.
@@ -347,18 +352,31 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
-                            speed=0.1)
+                            speed=0.7)
                         ready = False
                         time_start = time.time()
                         while(not ready):
                             if self.timeout:
                                 break
-                            self.timeout = (time.time() - time_start > 2 
-                                    and step != num_move_steps - 1)
+                            self.timeout = (time.time() - time_start > 2
+                                            and step != num_move_steps - 1)
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(
                                 phase, num_action_steps)
+                        should_stop = self._robot_should_stop()
+                        current_grasp_success = self.simulator.check_contact(
+                            self.robot.arm,
+                            self.graspable)
+                        if self.grasp_success and not current_grasp_success:
+                            self.grasp_cornercase = True
+                            logger.debug('Grasp cornercase')
+                        else:
+                            self.grasp_cornercase = False
+
+                        if should_stop:
+                            logger.debug('The robot should stop')
+                            return
 
                 elif phase == 'start':
                     self.grasp_cornercase = False
@@ -442,6 +460,24 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
             return True
         else:
             return False
+
+    def _robot_should_stop(self):
+        if self.simulator:
+            if self.simulator.check_contact(self.robot.arm, self.ceil):
+                logger.debug('The gripper contacts the ceiling')
+                return True
+            for wall in self.walls:
+                if self.simulator.check_contact(self.robot.arm, wall):
+                    logger.debug('The gripper contacts the walls')
+                    return True
+                if self.simulator.check_contact(self.graspable, wall):
+                    logger.debug('The tool contacts the walls')
+                    return True
+            if self.simulator.check_contact(self.graspable, self.table):
+                logger.debug('The tool contacts the table')
+                return True
+
+        return False
 
     def plot_pose(self,
                   pose,

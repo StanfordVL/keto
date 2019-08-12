@@ -16,6 +16,9 @@ parser.add_argument('--grasp',
                     type=str)
 parser.add_argument('--keypoint',
                     type=str)
+parser.add_argument('--num_funct_vect',
+                    type=str,
+                    default='0')
 parser.add_argument('--output',
                     type=str,
                     default='./runs/cvae_model')
@@ -24,10 +27,12 @@ args = parser.parse_args()
 if args.model == 'grasp':
     build_grasp_inference_graph()
 elif args.model == 'keypoint':
-    build_keypoint_inference_graph()
+    build_keypoint_inference_graph(
+            num_funct_vect=int(args.num_funct_vect))
 elif args.model == 'grasp_keypoint':
     build_grasp_inference_graph()
-    build_keypoint_inference_graph()
+    build_keypoint_inference_graph(
+            num_funct_vect=int(args.num_funct_vect))
 else:
     raise ValueError(args.model)
 

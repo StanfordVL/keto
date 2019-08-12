@@ -24,11 +24,11 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
     TARGET_REGION = {
         'x': 0.25,
-        'y': 0.2,
-        'z': 0.1,
+        'y': 0.25,
+        'z': 0.10,
         'roll': 0,
         'pitch': 0,
-        'yaw': 0,
+        'yaw': np.pi/2,
     }
 
     def __init__(self,
@@ -73,11 +73,19 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 seed,
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
-
+    
         g_kp, f_kp, f_v = tf.py_func(reach_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
-
+        """
+        keypoints, f_v, _ = forward_keypoint(
+                point_cloud_tf * scale,
+                num_funct_vect=1)
+        g_kp, f_kp = keypoints
+        g_kp = g_kp / scale
+        f_kp = f_kp / scale
+        """
+        
         keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
         keypoints = tf.expand_dims(keypoints, axis=0)
 
@@ -127,7 +135,7 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy + force * 0.01, tf.constant([0.2], dtype=tf.float32),
+            g_xy, tf.constant([0.2], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

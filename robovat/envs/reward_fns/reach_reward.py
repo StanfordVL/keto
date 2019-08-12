@@ -42,10 +42,10 @@ class ReachReward(reward_fn.RewardFn):
     def get_reward(self):
         """Returns the reward value of the current step."""
         if self.env.simulator:
-            self.env.simulator.wait_until_stable(self.target)
+            #self.env.simulator.wait_until_stable(self.target)
             target_pose = np.array(self.target.pose.position)
-            hammer_depth = target_pose[0] - self.target_pose_init[0]
-            success = hammer_depth > 0.04
+            hammer_depth = target_pose[1] - self.target_pose_init[1]
+            success = hammer_depth > 0.03
             logger.debug('Target trans: %.3f', hammer_depth)
         else:
             raise NotImplementedError

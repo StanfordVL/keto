@@ -472,7 +472,9 @@ def build_grasp_inference_graph(num_points=1024, num_samples=128):
     return inference_graph
 
 
-def build_keypoint_inference_graph(num_points=1024, num_samples=128):
+def build_keypoint_inference_graph(num_points=1024, 
+                                   num_samples=128,
+                                   num_funct_vect=0):
     point_cloud_tf = tf.placeholder(
         tf.float32, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -481,9 +483,10 @@ def build_keypoint_inference_graph(num_points=1024, num_samples=128):
         [tf.zeros([num_samples, 2], dtype=tf.float32),
          tf.ones([num_samples, 2], dtype=tf.float32)],
         axis=1)
-    keypoints_vae = KeypointDecoder().build_model(
-        tf.reshape(point_cloud,
-                   (-1, num_points, 1, 3)), latent_var)
+    keypoints_vae, funct_vect_vae = KeypointDecoder(
+            ).build_model(tf.reshape(point_cloud,
+                                     (-1, num_points, 1, 3)), 
+                          latent_var, num_funct_vect)
     dist_mat = tf.linalg.norm(
         tf.add(tf.expand_dims(point_cloud, 3),
                -tf.transpose(
@@ -494,9 +497,11 @@ def build_keypoint_inference_graph(num_points=1024, num_samples=128):
         tf.reduce_min(dist_mat, axis=1), axis=1)
 
     score = KeypointDiscriminator().build_model(
-        tf.expand_dims(point_cloud, 2), keypoints_vae)
+        tf.expand_dims(point_cloud, 2), keypoints_vae,
+        funct_vect_vae)
     inference_graph = {'point_cloud_tf': point_cloud_tf,
                        'keypoints': keypoints_vae,
+                       'funct_vect': funct_vect_vae,
                        'score': score,
                        'dist': dist}
     return inference_graph
@@ -788,6 +793,7 @@ def train_vae_keypoint(data_path,
                        eval_step=4000,
                        save_step=4000,
                        model_path=None,
+                       task_name='task',
                        optimizer='SGDM'):
     loader = KeypointReader(data_path)
     num_funct_vect = loader.num_funct_vect
@@ -887,8 +893,8 @@ def train_vae_keypoint(data_path,
 
             if step > 0 and step % save_step == 0:
                 saver.save(sess,
-                           './runs/vae/vae_keypoint_{}'.format(
-                               str(step).zfill(6)))
+                           './runs/vae/vae_keypoint_{}_{}'.format(
+                               task_name, str(step).zfill(6)))
 
 
 def train_gcnn_grasp(data_path,
@@ -1034,6 +1040,7 @@ def train_discr_keypoint(data_path,
                          eval_step=4000,
                          save_step=4000,
                          model_path=None,
+                         task_name='task',
                          optimizer='SGDM'):
     loader = KeypointReader(data_path)
     num_funct_vect = loader.num_funct_vect
@@ -1110,19 +1117,22 @@ def train_discr_keypoint(data_path,
 
             if step > 0 and step % save_step == 0:
                 saver.save(sess,
-                           './runs/discr/discr_keypoint_{}'.format(
-                               str(step).zfill(6)))
+                           './runs/discr/discr_keypoint_{}_{}'.format(
+                               task_name, str(step).zfill(6)))
 
             if step > 0 and step % eval_step == 0:
                 for noise_level in [0.1, 0.2, 0.4, 0.8]:
-                    p_np, grasp_np, funct_np, label_np = load_samples(
+                    [p_np, grasp_np, funct_np, 
+                            funct_vect_np, label_np] = load_samples(
                         loader, batch_size, 'train', noise_level)
-                    [acc_np] = sess.run([acc_discr],
-                                        feed_dict={
-                                            point_cloud_tf: p_np,
-                                            grasp_point_tf: grasp_np,
-                                            funct_point_tf: funct_np,
-                                            keypoints_label_tf: label_np})
+                    feed_dict = {point_cloud_tf: p_np,
+                                 grasp_point_tf: grasp_np,
+                                 funct_point_tf: funct_np,
+                                 keypoints_label_tf: label_np}
+                    if num_funct_vect:
+                        feed_dict.update({funct_vect_tf: funct_vect_np})
+
+                    [acc_np] = sess.run([acc_discr], feed_dict=feed_dict)
                     running_log.write('discr',
                                       'noise: {:.3f}, acc: {:.3f}'.format(
                                           noise_level, acc_np * 100))
