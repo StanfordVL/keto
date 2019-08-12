@@ -166,16 +166,15 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         g_kp, f_kp, _ = tf.py_func(search_keypoints,
                                 [point_cloud_tf],
                                 [tf.float32, tf.float32, tf.float32])
-     
+
         g_kp, f_kp = tf.py_func(hammer_keypoints_heuristic,
                                 [point_cloud_tf],
                                 [tf.float32, tf.float32])
         """
-        keypoints, _ = forward_keypoint(point_cloud_tf * scale)
+        keypoints, _, _ = forward_keypoint(point_cloud_tf * scale)
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
-
 
         keypoints = tf.expand_dims(tf.concat([g_kp, f_kp], axis=0), 0)
         action, score = forward_grasp(
@@ -214,22 +213,21 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                             dtype=tf.float32)
         u = tf.constant([0.04], dtype=tf.float32)
         g_xy, g_rz, g_drz = tf.py_func(solver_hammering,
-                              [target, force * 0.001, s, d, u], 
-                              [tf.float32, tf.float32, tf.float32])
+                                       [target, force * 0.001, s, d, u],
+                                       [tf.float32, tf.float32, tf.float32])
         g_xy = tf.Print(g_xy, [g_xy, g_rz, g_kp])
         g_rz = g_rz - start_rz + action_4dof[0, 3]
 
-
         target_rot = tf.concat([
-            tf.constant([0, 0, 0], dtype=tf.float32), 
+            tf.constant([0, 0, 0], dtype=tf.float32),
             [g_drz]],
             axis=0)
         pre_target_pose = tf.concat([
-            g_xy - force * 0.09, tf.constant([0.18], dtype=tf.float32), 
+            g_xy - force * 0.09, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy - force * 0.02, tf.constant([0.18], dtype=tf.float32), 
+            g_xy - force * 0.02, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

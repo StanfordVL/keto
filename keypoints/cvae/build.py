@@ -588,7 +588,8 @@ def forward_keypoint(point_cloud_tf,
         [tf.zeros([num_samples, 2], dtype=tf.float32),
          tf.ones([num_samples, 2], dtype=tf.float32)],
         axis=1)
-    keypoints_vae, funct_vect_vae = KeypointDecoder().build_model(
+    [keypoints_vae, funct_vect_vae] = KeypointDecoder(
+            ).build_model(
             tf.reshape(point_cloud, (-1, num_points, 1, 3)), 
             latent_var,
             num_funct_vect)
@@ -632,6 +633,7 @@ def forward_keypoint(point_cloud_tf,
     top_score = score[index]
     top_keypoints = [k[index] for k in keypoints_vae]
 
+    top_funct_vect = None
     if num_funct_vect:
         top_funct_vect = funct_vect_vae[index]
 
@@ -1029,14 +1031,15 @@ def train_discr_keypoint(data_path,
                          eval_size=128,
                          l2_weight=1e-6,
                          log_step=20,
-                         eval_step=6000,
-                         save_step=6000,
+                         eval_step=4000,
+                         save_step=4000,
                          model_path=None,
                          optimizer='SGDM'):
     loader = KeypointReader(data_path)
     num_funct_vect = loader.num_funct_vect
 
-    graph = build_keypoint_training_graph()
+    graph = build_keypoint_training_graph(
+            num_funct_vect=num_funct_vect)
     learning_rate = tf.placeholder(tf.float32, shape=())
 
     point_cloud_tf = graph['point_cloud_tf']

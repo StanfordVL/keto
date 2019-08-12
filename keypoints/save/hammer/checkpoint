@@ -1,2 +1,0 @@
-model_checkpoint_path: "cvae_model"
-all_model_checkpoint_paths: "cvae_model"
