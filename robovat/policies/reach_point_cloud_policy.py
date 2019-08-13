@@ -73,7 +73,7 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 seed,
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
-    
+        """ 
         g_kp, f_kp, f_v = tf.py_func(reach_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
@@ -84,7 +84,7 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
-        """
+    
         
         keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
         keypoints = tf.expand_dims(keypoints, axis=0)
