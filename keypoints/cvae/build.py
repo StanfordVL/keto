@@ -880,7 +880,7 @@ def train_vae_keypoint(data_path,
                 feed_dict=feed_dict)
 
             if step % log_step == 0:
-                running_log.write('vae',
+                running_log.write('vae_{}'.format(task_name),
                                   'step: {}/{}, '.format(step, steps) +
                                   'loss: {:.3f}, grasp: {:.3f}/{:.3f}, '.format(
                                       loss_np, vae_grasp, std_gt_grasp_np) +
@@ -1133,7 +1133,7 @@ def train_discr_keypoint(data_path,
                         feed_dict.update({funct_vect_tf: funct_vect_np})
 
                     [acc_np] = sess.run([acc_discr], feed_dict=feed_dict)
-                    running_log.write('discr',
+                    running_log.write('discr_{}'.format(task_name),
                                       'noise: {:.3f}, acc: {:.3f}'.format(
                                           noise_level, acc_np * 100))
 
