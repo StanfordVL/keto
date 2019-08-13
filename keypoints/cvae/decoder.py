@@ -57,13 +57,18 @@ class GraspDecoder(Network):
 
 class KeypointDecoder(Network):
 
-    def build_model(self, x, z, nv=0):
+    def build_model(self, x, z, nv=0, 
+                    truncated_normal=False):
         with tf.variable_scope('vae_keypoint_decoder',
                                reuse=tf.AUTO_REUSE):
 
             miu, sigma = tf.split(z, 2, axis=1)
-            z = miu + sigma * tf.random_normal(
-                tf.shape(sigma), 0.0, 1.0)
+            if truncated_normal:
+                z = miu + sigma * tf.random.truncated_normal(
+                    tf.shape(sigma), 0.0, 1.0)
+            else:
+                z = miu + sigma * tf.random_normal(
+                    tf.shape(sigma), 0.0, 1.0)
             _, z_dim = z.get_shape().as_list()
             z = tf.reshape(z, [-1, 1, 1, z_dim])
 

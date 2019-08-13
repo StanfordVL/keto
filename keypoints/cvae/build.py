@@ -591,13 +591,14 @@ def forward_keypoint(point_cloud_tf,
         point_cloud_tf, [num_samples, 1, 1])
     latent_var = tf.concat(
         [tf.zeros([num_samples, 2], dtype=tf.float32),
-         tf.ones([num_samples, 2], dtype=tf.float32)],
+         0.6 * tf.ones([num_samples, 2], dtype=tf.float32)],
         axis=1)
     [keypoints_vae, funct_vect_vae] = KeypointDecoder(
             ).build_model(
             tf.reshape(point_cloud, (-1, num_points, 1, 3)), 
             latent_var,
-            num_funct_vect)
+            num_funct_vect,
+            truncated_normal=True)
 
     dist_mat = tf.linalg.norm(
         tf.add(tf.expand_dims(point_cloud, 3),

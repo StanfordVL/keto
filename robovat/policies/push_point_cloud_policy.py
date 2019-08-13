@@ -152,7 +152,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 seed,
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
-
+    
         g_kp, f_kp, f_v = tf.py_func(push_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
