@@ -295,7 +295,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                             rolling_friction=1000,
                             spinning_friction=1000)
                         self.table.set_dynamics(
-                            lateral_friction=1)
+                            lateral_friction=0.1)
 
     def _execute_action_pushing(self, action):
         """Execute the pushing action.

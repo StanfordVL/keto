@@ -51,7 +51,7 @@ class PushReward(reward_fn.RewardFn):
         if self.env.simulator:
             all_trans = []
             for target, pose_init in zip(self.target, self.target_pose_init):
-                self.env.simulator.wait_until_stable(target)
+                # self.env.simulator.wait_until_stable(target)
                 target_pose = np.array(target.pose.position)
                 trans = target_pose[0] - pose_init[0]
                 all_trans.append(trans)

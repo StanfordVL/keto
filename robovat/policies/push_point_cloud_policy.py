@@ -152,7 +152,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 seed,
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
-    
+        """
         g_kp, f_kp, f_v = tf.py_func(push_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
@@ -163,7 +163,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
-        """
+        
 
         keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
         keypoints = tf.expand_dims(keypoints, axis=0)
@@ -209,17 +209,21 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         target_force = tf.concat([
             force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
 
+        overhead_pose = tf.concat([
+            g_xy - force * 0.15, tf.constant([0.40], dtype=tf.float32),
+            [g_rz]],
+            axis=0)
         pre_target_pose = tf.concat([
-            g_xy - force * 0.10, tf.constant([0.2], dtype=tf.float32),
+            g_xy - force * 0.10, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy + force * 0.05, tf.constant([0.2], dtype=tf.float32),
+            g_xy + force * 0.10, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
         action_task = self._concat_actions(
-            [target_force, pre_target_pose, target_pose])
+            [target_force, overhead_pose, pre_target_pose, target_pose])
 
         action = {'grasp': action_4dof,
                   'task': action_task,
