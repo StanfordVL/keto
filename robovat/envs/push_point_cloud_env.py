@@ -363,7 +363,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
-                            speed=0.1)
+                            speed=0.7)
                         ready = False
                         time_start = time.time()
                         while(not ready):

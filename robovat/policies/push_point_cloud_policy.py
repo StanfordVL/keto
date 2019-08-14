@@ -43,7 +43,8 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                  time_step_spec,
                  action_spec,
                  config=None,
-                 debug=False):
+                 debug=False,
+                 is_training=True):
 
         super(PushPointCloudPolicy, self).__init__(
             time_step_spec,
@@ -54,6 +55,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         pose = Pose.uniform(**self.TARGET_REGION)
         self.target_pose = get_transform(
             source=self.table_pose).transform(pose)
+        self.is_training = is_training
 
     def _concat_actions(self, actions, num_dof=4):
         actions = tf.expand_dims(
@@ -75,23 +77,39 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
              [zero, zero, one]], [3, 3])
         return mat
 
-    def _action(self,
-                time_step,
-                policy_state,
-                seed,
-                scale=20):
-        point_cloud_tf = time_step.observation['point_cloud']
-        """
+    def _keypoints_heuristic(self, point_cloud_tf):
+        point_cloud_tf = tf.Print(
+                point_cloud_tf, [], message='Using heuristic policy')
+
         g_kp, f_kp, f_v = tf.py_func(push_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
-        """    
+        return g_kp, f_kp, f_v
+
+    def _keypoints_network(self, point_cloud_tf, scale=20):
+        point_cloud_tf = tf.Print(
+                point_cloud_tf, [], message='Using network policy')
         keypoints, f_v, _ = forward_keypoint(
                 point_cloud_tf * scale,
                 num_funct_vect=1)
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
-        f_kp = f_kp / scale        
+        f_kp = f_kp / scale
+        return g_kp, f_kp, f_v
+
+    def _action(self,
+                time_step,
+                policy_state,
+                seed, 
+                scale=20):
+        point_cloud_tf = time_step.observation['point_cloud']
+        
+        if self.is_training:
+            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 0.5,
+                    lambda: self._keypoints_heuristic(point_cloud_tf),
+                    lambda: self._keypoints_network(point_cloud_tf))
+        else:
+            g_kp, f_kp, f_v = self._keypoints_network(point_cloud_tf)
 
         keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
         keypoints = tf.expand_dims(keypoints, axis=0)
