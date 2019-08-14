@@ -29,11 +29,13 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
     def __init__(self,
                  simulator=None,
                  config=None,
-                 debug=True):
+                 debug=True,
+                 is_training=True):
         """Initialize."""
         self.simulator = simulator
         self.config = config or self.default_config
         self.debug = debug
+        self.is_training = is_training
 
         self.build_camera(
             height=self.config.KINECT2.DEPTH.HEIGHT,
@@ -403,6 +405,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
             return True
 
     def _good_grasp(self, pre, post, thres=0.02):
+        if not self.is_training:
+            return True
         trans = np.linalg.norm(pre - post)
         logger.debug('The tool slips {:.3f}'.format(trans))
         return trans < thres

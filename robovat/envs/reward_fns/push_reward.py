@@ -55,12 +55,12 @@ class PushReward(reward_fn.RewardFn):
                 # self.env.simulator.wait_until_stable(target)
                 target_pose = np.array(target.pose.position)
                 trans = target_pose[0] - pose_init[0]
-                all_trans.append(trans)
-            min_trans = np.amin(all_trans)
+                trans_z = abs(target_pose[2] - pose_init[2])
+                suc = trans > 0.05 or trans_z > 0.2
+                all_trans.append(suc)
 
-            success = min_trans > 0.05
+            success = np.all(all_trans)
 
-            logger.debug('Minimum trans: %.3f', min_trans)
         else:
             raise NotImplementedError
 

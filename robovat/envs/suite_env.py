@@ -19,7 +19,8 @@ def load(env_name,
          max_episode_steps=None,
          gym_env_wrappers=(),
          env_wrappers=(),
-         spec_dtype_map=None):
+         spec_dtype_map=None,
+         is_training=True):
     """Loads the selected environment and wraps it with the specified wrappers.
     Note that by default a TimeLimit wrapper is used to limit episode lengths
     to the default benchmarks defined by the registered environments.
@@ -44,7 +45,8 @@ def load(env_name,
     env_class = getattr(envs, env_name)
     env = env_class(simulator=simulator,
                     config=config,
-                    debug=debug)
+                    debug=debug,
+                    is_training=is_training)
     return wrap_env(
         env,
         discount=discount,

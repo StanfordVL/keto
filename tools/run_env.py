@@ -53,6 +53,11 @@ def parse_args():
         default=None)
 
     parser.add_argument(
+        '--is_training',
+        type=int,
+        default=1)
+
+    parser.add_argument(
         '--use_simulator',
         dest='use_simulator',
         type=int,
@@ -177,7 +182,8 @@ def main():
                             simulator=simulator,
                             config=env_config,
                             debug=args.debug,
-                            max_episode_steps=None)
+                            max_episode_steps=None,
+                            is_training=bool(args.is_training))
     tf_env = tf_py_environment.TFPyEnvironment(py_env)
 
     # Policy.
