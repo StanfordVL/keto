@@ -283,7 +283,7 @@ class ReachArmEnv(ArmEnv):
     """The environment of robot reaching."""
 
     TARGET_REGION = {
-            'x': 0.25,
+            'x': 0.20,
             'y': 0.25,
             'z': 0.10,
             'roll': 0,
@@ -291,14 +291,14 @@ class ReachArmEnv(ArmEnv):
             'yaw': np.pi/2}
 
     WALL_REGION = [{
-            'x': 0.20,
+            'x': 0.15,
             'y': 0.25,
             'z': 0.05,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2},
             {
-            'x': 0.30,
+            'x': 0.25,
             'y': 0.25,
             'z': 0.05,
             'roll': 0,
@@ -306,7 +306,7 @@ class ReachArmEnv(ArmEnv):
             'yaw': np.pi/2}]
 
     CEIL_REGION = {
-            'x': 0.25,
+            'x': 0.20,
             'y': 0.25,
             'z': 0.15,
             'roll': 0,

@@ -23,7 +23,7 @@ nest = tf.contrib.framework.nest
 class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
     TARGET_REGION = {
-        'x': 0.25,
+        'x': 0.20,
         'y': 0.25,
         'z': 0.10,
         'roll': 0,
@@ -31,21 +31,28 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         'yaw': np.pi/2,
     }
 
+    TABLE_POSE = [
+            [0.6, 0, 0.0], 
+            [0, 0, 0]]
+
     def __init__(self,
                  time_step_spec,
                  action_spec,
                  config=None,
-                 debug=False):
+                 debug=False,
+                 is_training=True):
 
         super(ReachPointCloudPolicy, self).__init__(
             time_step_spec,
             action_spec,
             config=config)
 
-        self.table_pose = Pose(self.config.SIM.TABLE.POSE)
+        self.table_pose = Pose(self.TABLE_POSE)
         pose = Pose.uniform(**self.TARGET_REGION)
         self.target_pose = get_transform(
             source=self.table_pose).transform(pose)
+
+        self.is_training = is_training
 
     def _concat_actions(self, actions, num_dof=4):
         actions = tf.expand_dims(
@@ -67,25 +74,60 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
              [zero, zero, one]], [3, 3])
         return mat
 
+    """
     def _action(self,
                 time_step,
                 policy_state,
                 seed,
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
-        """ 
+    
         g_kp, f_kp, f_v = tf.py_func(reach_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
-        """
+    
         keypoints, f_v, _ = forward_keypoint(
                 point_cloud_tf * scale,
                 num_funct_vect=1)
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
-    
+    """
         
+    def _keypoints_heuristic(self, point_cloud_tf):
+        point_cloud_tf = tf.Print(
+                point_cloud_tf, [], message='Using heuristic policy')
+
+        g_kp, f_kp, f_v = tf.py_func(reach_keypoints_heuristic,
+                                     [point_cloud_tf],
+                                     [tf.float32, tf.float32, tf.float32])
+        return g_kp, f_kp, f_v
+
+    def _keypoints_network(self, point_cloud_tf, scale=20):
+        point_cloud_tf = tf.Print(
+                point_cloud_tf, [], message='Using network policy')
+        keypoints, f_v, _ = forward_keypoint(
+                point_cloud_tf * scale,
+                num_funct_vect=1)
+        g_kp, f_kp = keypoints
+        g_kp = g_kp / scale
+        f_kp = f_kp / scale
+        return g_kp, f_kp, f_v
+
+    def _action(self,
+                time_step,
+                policy_state,
+                seed, 
+                scale=20):
+        point_cloud_tf = time_step.observation['point_cloud']
+        
+        if self.is_training:
+            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 0.5,
+                    lambda: self._keypoints_heuristic(point_cloud_tf),
+                    lambda: self._keypoints_network(point_cloud_tf))
+        else:
+            g_kp, f_kp, f_v = self._keypoints_network(point_cloud_tf)
+
         keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
         keypoints = tf.expand_dims(keypoints, axis=0)
 
@@ -130,6 +172,12 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         target_force = tf.concat([
             force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
 
+
+        pre_pre_target_pose = tf.concat([
+            g_xy - force * 0.15, tf.constant([0.2], dtype=tf.float32),
+            [g_rz]],
+            axis=0)
+
         pre_target_pose = tf.concat([
             g_xy - force * 0.12, tf.constant([0.2], dtype=tf.float32),
             [g_rz]],
@@ -140,7 +188,7 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             axis=0)
 
         action_task = self._concat_actions(
-            [target_force, pre_target_pose, target_pose])
+            [target_force, pre_pre_target_pose, pre_target_pose, target_pose])
 
         action = {'grasp': action_4dof,
                   'task': action_task,

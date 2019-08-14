@@ -118,7 +118,7 @@ def reach_keypoints_heuristic(point_cloud,
     ransac = linear_model.RANSACRegressor()
     ransac.fit(xs, np.squeeze(ys))
     centers_inlier = centers[ransac.inlier_mask_]
-    if np.random.uniform() > 0.5:
+    if np.random.uniform() > 0.75:
         inlier_mask = np.logical_not(ransac.inlier_mask_)
         if np.sum(inlier_mask) > 1:
             ransac = linear_model.RANSACRegressor()

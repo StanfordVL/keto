@@ -45,7 +45,7 @@ class ReachReward(reward_fn.RewardFn):
             #self.env.simulator.wait_until_stable(self.target)
             target_pose = np.array(self.target.pose.position)
             hammer_depth = target_pose[1] - self.target_pose_init[1]
-            success = hammer_depth > 0.03
+            success = hammer_depth > 0.01
             logger.debug('Target trans: %.3f', hammer_depth)
         else:
             raise NotImplementedError

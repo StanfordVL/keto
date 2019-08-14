@@ -1,6 +1,7 @@
 python tools/run_env.py \
   --env ReachPointCloudEnv \
   --env_config configs/envs/reach_point_cloud_env.yaml \
+  --is_training 1 \
   --policy ReachPointCloudPolicy \
   --policy_config configs/policies/reach_point_cloud_policy.yaml \
   --problem ReachPointCloudProblem \
