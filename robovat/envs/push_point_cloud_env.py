@@ -264,6 +264,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
 
                 elif phase == 'start':
                     pre_grasp_pose = np.array(self.graspable.pose.position)
+                    pre_grasp_euler = self.graspable.pose.euler
 
                     self.robot.move_to_gripper_pose(start, straight_line=True)
 
@@ -288,6 +289,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     self.robot.move_to_gripper_pose(
                         postend,
                         straight_line=True, speed=0.3)
+                    post_grasp_euler = self.graspable.pose.euler
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
@@ -301,8 +303,10 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                             spinning_friction=1000)
                         self.table.set_dynamics(
                             lateral_friction=0.3)
-
-        return self._good_grasp(pre_grasp_pose, post_grasp_pose)
+        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose)
+        good_rot = self._good_grasp(np.sin(pre_grasp_euler - post_grasp_euler),
+                0, thres=0.17)
+        return good_loc
 
     def _execute_action_pushing(self, action):
         """Execute the pushing action.
@@ -330,6 +334,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     num_move_steps = action.shape[0]
 
                     for step in range(1, num_move_steps):
+                        if self._robot_should_stop():
+                            break
                         if self.timeout:
                             break
                         x, y, z, angle = action[step]
@@ -362,7 +368,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                             if self.timeout:
                                 break
                             if time.time() - time_start > 2:
-                                self.timeout = True
+                                if step < num_move_steps - 1:
+                                    self.timeout = True
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(
@@ -385,6 +392,15 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
         plt.savefig('./episodes/figures/path_%02d' % (
             np.random.randint(100)))
         plt.close()
+
+
+    def _robot_should_stop(self):
+        if not self.simulator.check_contact(
+                self.robot.arm, self.graspable):
+            return True
+        if self.simulator.check_contact(
+                self.table, self.graspable):
+            return True
 
     def _good_grasp(self, pre, post, thres=0.02):
         trans = np.linalg.norm(pre - post)
