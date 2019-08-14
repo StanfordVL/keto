@@ -161,6 +161,7 @@ def main():
     else:
         policy_config = YamlConfig(args.policy_config).as_easydict()
 
+
     # Simulator.
     if args.use_simulator:
         simulator = Simulator(worker_id=args.worker_id,
@@ -190,7 +191,8 @@ def main():
         policy_class = getattr(policies, args.policy)
         tf_policy = policy_class(time_step_spec=tf_env.time_step_spec(),
                                  action_spec=tf_env.action_spec(),
-                                 config=policy_config,)
+                                 config=policy_config)
+
 
     py_policy = py_tf_policy.PyTFPolicy(tf_policy)
 

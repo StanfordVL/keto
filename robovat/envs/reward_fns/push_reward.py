@@ -45,6 +45,7 @@ class PushReward(reward_fn.RewardFn):
 
         self.graspable = self.env.simulator.bodies[self.graspable_name]
         self.env.timeout = False
+        self.env.grasp_cornercase = False
 
     def get_reward(self):
         """Returns the reward value of the current step."""

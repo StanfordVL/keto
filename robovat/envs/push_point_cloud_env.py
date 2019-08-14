@@ -209,10 +209,12 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
         #
         # Grasping
         #
-        self._execute_action_grasping(action_grasp)
+        is_good_grasp = self._execute_action_grasping(action_grasp)
 
+        if not is_good_grasp:
+            return
         #
-        # Hammering
+        # Pushing
         #
         self._execute_action_pushing(action_task)
 
@@ -261,6 +263,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     self.robot.move_to_gripper_pose(prestart)
 
                 elif phase == 'start':
+                    pre_grasp_pose = np.array(self.graspable.pose.position)
+
                     self.robot.move_to_gripper_pose(start, straight_line=True)
 
                     # Prevent problems caused by unrealistic frictions.
@@ -276,6 +280,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
 
                 elif phase == 'end':
                     self.robot.grip(1)
+                    post_grasp_pose = np.array(self.graspable.pose.position)
 
                 elif phase == 'postend':
                     postend = self.robot.end_effector.pose
@@ -295,7 +300,9 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                             rolling_friction=1000,
                             spinning_friction=1000)
                         self.table.set_dynamics(
-                            lateral_friction=0.1)
+                            lateral_friction=0.3)
+
+        return self._good_grasp(pre_grasp_pose, post_grasp_pose)
 
     def _execute_action_pushing(self, action):
         """Execute the pushing action.
@@ -362,7 +369,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                                 phase, num_action_steps)
 
                 elif phase == 'start':
-                    self.grasp_cornercase = False
+                    pass 
 
                 elif phase == 'end':
                     pass
@@ -378,6 +385,11 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
         plt.savefig('./episodes/figures/path_%02d' % (
             np.random.randint(100)))
         plt.close()
+
+    def _good_grasp(self, pre, post, thres=0.02):
+        trans = np.linalg.norm(pre - post)
+        logger.debug('The tool slips {:.3f}'.format(trans))
+        return trans < thres
 
     def _wait_until_ready(self, phase, num_action_steps):
         ready = False
