@@ -2,6 +2,8 @@
 versions
 slurm
 runs
+*.obj
+*.urdf
 *.png
 *.jpg
 *.hdf5

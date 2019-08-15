@@ -24,7 +24,8 @@ class Grasp4DofEnv(arm_env.ArmEnv):
     def __init__(self,
                  simulator=None,
                  config=None,
-                 debug=True):
+                 debug=True,
+                 is_training=True):
         """Initialize."""
         self.simulator = simulator
         self.config = config or self.default_config
@@ -134,7 +135,9 @@ class Grasp4DofEnv(arm_env.ArmEnv):
         print(self.success_record)
         return
 
-    def choose_graspable_index(self):
+    def choose_graspable_index(self, explore_prob=0.2):
+        if np.random.uniform() < explore_prob:
+            return np.random.randint(len(self.all_graspable_paths))
         argsort = np.argsort(
                 self.success_record)
         return argsort[0]

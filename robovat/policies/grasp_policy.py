@@ -70,7 +70,8 @@ class Grasp4DofRandomPolicy(random_tf_policy.RandomTFPolicy):
                  action_spec,
                  policy_state_spec=(),
                  config=None,
-                 debug=False):
+                 debug=False,
+                 is_training=True):
         self._sampler = AntipodalGraspSampler(
             time_step_spec, action_spec, config, debug=True)
         self._num_samples = 1

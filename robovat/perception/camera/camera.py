@@ -83,13 +83,7 @@ class Camera(object):
                                           self._crop[1]:self._crop[3]]
 
         return images
-
-    @abc.abstractmethod
-    def _frames(self):
-        """Get the latest set of frames.
-        """
-        raise NotImplementedError
-
+    
     def load_calibration(self, path, robot_pose=[[0, 0, 0], [0, 0, 0]]):
         """Set the camera by using the camera calibration results.
 
