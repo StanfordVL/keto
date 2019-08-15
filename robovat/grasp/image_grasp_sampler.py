@@ -362,19 +362,12 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
                 num_grasps += 1
 
         if num_grasps == 0:
-            raise ValueError('Failed to sample any valid grasp.')
+            grasps = np.ones(shape=[1, 5], dtype=np.float32)
 
         if self.debug:
             import matplotlib.pyplot as plt
-            # plt.figure()
-            # plt.imshow(image_cropped)
-            # plt.figure()
-            # plt.imshow(image_downsampled)
-            # plt.figure()
-            # plt.imshow(image_threshed)
             plt.figure()
             g = Grasp2D.from_vector(grasps[0], camera)
             grasp_vis.plot_grasp_on_image(image, g)
             plt.show()
-
         return grasps
