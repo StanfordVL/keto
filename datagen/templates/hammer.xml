@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<robot name="{name:s}">
+{handle_link:s}
+{head_link:s}
+  <joint name="joint" type="fixed">
+    <parent link="{handle_name:s}"/>
+    <child link="{head_name:s}"/>
+  </joint>
+</robot>

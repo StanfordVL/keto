@@ -1,0 +1,24 @@
+  <link name="{name:s}">
+    <inertial>
+      <origin rpy="{roll:g} {pitch:g} {yaw:g}" xyz="{x:g} {y:g} {z:g}"/>
+      <mass value="{mass:g}"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+    <contact>
+      <lateral_friction value="{lateral_friction:g}"/>
+      <spinning_friction value="{spinning_friction:g}"/>
+      <inertia_scaling value="{inertia_scaling:g}"/>
+    </contact>
+    <visual>
+      <origin rpy="{roll:g} {pitch:g} {yaw:g}" xyz="{x:g} {y:g} {z:g}"/>
+      <geometry>
+        <cylinder length="{scale_z:g}" radius="{scale_x:g}"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="{roll:g} {pitch:g} {yaw:g}" xyz="{x:g} {y:g} {z:g}"/>
+      <geometry>
+        <cylinder length="{scale_z:g}" radius="{scale_x:g}"/>
+      </geometry>
+    </collision>
+  </link>
