@@ -361,7 +361,7 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
 
                 num_grasps += 1
 
-        if num_grasps == 0:
+        if num_grasps == 0 or len(grasps) == 0:
             grasps = np.ones(shape=[1, 5], dtype=np.float32)
 
         if self.debug:
