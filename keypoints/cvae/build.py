@@ -801,7 +801,7 @@ def train_vae_keypoint(data_path,
                        save_step=4000,
                        model_path=None,
                        task_name='task',
-                       optimizer='SGDM'):
+                       optimizer='Adam'):
     loader = KeypointReader(data_path)
     num_funct_vect = loader.num_funct_vect
 

@@ -211,8 +211,10 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
         #
         # Grasping
         #
-        self._execute_action_grasping(action_grasp)
+        is_good_grasp = self._execute_action_grasping(action_grasp)
 
+        if self.is_training and not is_good_grasp:
+            return
         #
         # Hammering
         #
@@ -264,6 +266,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
 
                 elif phase == 'start':
                     self.robot.move_to_gripper_pose(start, straight_line=True)
+                    pre_grasp_pose = np.array(self.graspable.pose.position)
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
@@ -278,6 +281,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
 
                 elif phase == 'end':
                     self.robot.grip(1)
+                    post_grasp_pose = np.array(self.graspable.pose.position)
 
                 elif phase == 'postend':
                     postend = self.robot.end_effector.pose
@@ -303,6 +307,9 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                     self.grasp_success = self.simulator.check_contact(
                         self.robot.arm,
                         self.graspable)
+
+        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose)
+        return good_loc
 
     def _execute_action_reaching(self, action):
         """Execute the reaching action.
@@ -398,6 +405,13 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
             np.random.randint(100)))
         plt.close()
 
+    def _good_grasp(self, pre, post, thres=0.02):
+        if not self.is_training:
+            return True
+        trans = np.linalg.norm(pre - post)
+        logger.debug('The tool slips {:.3f}'.format(trans))
+        return trans < thres
+
     def _wait_until_ready(self, phase, num_action_steps):
         ready = False
         while(not ready):
@@ -473,11 +487,13 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                     logger.debug('The gripper contacts the walls')
                     return True
                 if self.simulator.check_contact(self.graspable, wall):
-                    logger.debug('The tool contacts the walls')
-                    return True
+                    if self.is_training:
+                        logger.debug('The tool contacts the walls')
+                        return True
             if self.simulator.check_contact(self.graspable, self.table):
-                logger.debug('The tool contacts the table')
-                return True
+                if self.is_training:
+                    logger.debug('The tool contacts the table')
+                    return True
 
         return False
 

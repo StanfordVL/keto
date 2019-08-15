@@ -3,6 +3,8 @@ import h5py
 import argparse
 import numpy as np
 
+from  progress.bar import ShadyBar
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
@@ -42,6 +44,8 @@ max_plot = 100
 
 data_list = os.listdir(point_cloud_dir)
 
+bar = ShadyBar('Processing inputs', max=len(data_list))
+
 for data_name in data_list:
     p = np.load(open(os.path.join(
         point_cloud_dir, data_name), 'rb'))
@@ -62,6 +66,9 @@ for data_name in data_list:
 
     else:
         raise ValueError
+
+    bar.next()
+bar.finish()
 
 pos_point_cloud = np.concatenate(pos_point_cloud, axis=0) * scale
 neg_point_cloud = np.concatenate(neg_point_cloud, axis=0) * scale

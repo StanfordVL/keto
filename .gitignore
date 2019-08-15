@@ -2,7 +2,6 @@
 versions
 slurm
 runs
-save
 *.png
 *.jpg
 *.hdf5

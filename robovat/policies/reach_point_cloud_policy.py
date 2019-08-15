@@ -174,16 +174,16 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
 
         pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.15, tf.constant([0.2], dtype=tf.float32),
+            g_xy - force * 0.17, tf.constant([0.4], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
         pre_target_pose = tf.concat([
-            g_xy - force * 0.12, tf.constant([0.2], dtype=tf.float32),
+            g_xy - force * 0.12, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy, tf.constant([0.2], dtype=tf.float32),
+            g_xy, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

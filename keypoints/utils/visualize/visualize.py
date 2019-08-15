@@ -15,7 +15,7 @@ parser.add_argument('--keypoints',
 
 parser.add_argument('--save',
                     type=str,
-                    default='./save')
+                    default='./figures')
 
 parser.add_argument('--max_num',
                     type=str,
