@@ -4,5 +4,5 @@ python tools/run_env.py \
   --policy Grasp4DofRandomPolicy \
   --policy_config configs/policies/grasp_4dof_random_policy.yaml \
   --problem Grasp4DofProblem \
-  --episodic 0 --num_episodes 40960 --debug 1 \
-  --output episodes/grasp_4dof_random_single
+  --episodic 0 --num_episodes 40960 --debug 0 \
+  --output episodes/grasp_4dof_random

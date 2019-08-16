@@ -103,6 +103,8 @@ class TrajectoryWriter(object):
         self._num_entries_this_file = 0
         self._num_calls = 0
 
+        self._process_id = np.random.randint(1e+6)
+
         if not os.path.isdir(output_dir):
             logger.info('Making output directory %s...', output_dir)
             os.makedirs(output_dir)
@@ -175,7 +177,9 @@ class TrajectoryWriter(object):
             if not os.path.exists(out_dir):
                 os.system('mkdir -p ' + out_dir)
             path = os.path.join(out_dir, 
-                    '%06d.npy' % (self._num_calls))
+                    '{}_{}.npy'.format(
+                        str(self._process_id).zfill(6),
+                        str(self._num_calls).zfill(6)))
             with open(path, 'wb') as f:
                 np.save(f, item)
         return

@@ -38,7 +38,7 @@ def surface_normals(depth, edge_pixels):
         if np.linalg.norm(normal) == 0:
             normal = np.array([1, 0])
 
-        normal = normal / np.linalg.norm(normal)
+        normal = normal / (1e-6 + np.linalg.norm(normal))
         normals[i, :] = normal
 
     return normals
@@ -49,7 +49,7 @@ def force_closure(p1, p2, n1, n2, mu):
     """
     # Line between the contacts.
     v = p2 - p1
-    v = v / np.linalg.norm(v)
+    v = v / (1e-6 + np.linalg.norm(v))
     
     # Compute cone membership.
     alpha = np.arctan(mu)
@@ -74,11 +74,11 @@ def image_dist(g1, g2, alpha=1.0):
     """
     g1_center = 0.5 * (g1[:, 0:2] + g1[:, 2:4])
     g1_axis = g1[:, 2:4] - g1[:, 0:2]
-    g1_axis = g1_axis / np.linalg.norm(g1_axis)
+    g1_axis = g1_axis / (1e-6 + np.linalg.norm(g1_axis))
 
     g2_center = 0.5 * (g2[:, 0:2] + g2[:, 2:4])
     g2_axis = g2[:, 2:4] - g2[:, 0:2]
-    g2_axis = g2_axis / np.linalg.norm(g2_axis)
+    g2_axis = g2_axis / (1e-6 + np.linalg.norm(g2_axis))
 
     point_dist = np.linalg.norm(g1_center - g2_center, axis=-1)
     axis_dist = np.arccos(np.sum(g1_axis * g2_axis, axis=-1))
