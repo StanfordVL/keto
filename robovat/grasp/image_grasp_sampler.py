@@ -370,4 +370,5 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
             g = Grasp2D.from_vector(grasps[0], camera)
             grasp_vis.plot_grasp_on_image(image, g)
             plt.show()
+        logger.debug('Grasps shape {}'.format(grasps.shape))
         return grasps

@@ -135,12 +135,13 @@ class Grasp4DofEnv(arm_env.ArmEnv):
         print(self.success_record)
         return
 
-    def choose_graspable_index(self, explore_prob=0.2):
+    def choose_graspable_index(self, explore_prob=0.7):
         if np.random.uniform() < explore_prob:
             return np.random.randint(len(self.all_graspable_paths))
-        argsort = np.argsort(
-                self.success_record)
-        return argsort[0]
+        record = self.success_record + np.random.normal(
+                size=np.shape(self.success_record))
+        argmin = np.argmin(record)
+        return argmin
 
     def reset_scene(self):
         """Reset the scene in simulation or the real world.
