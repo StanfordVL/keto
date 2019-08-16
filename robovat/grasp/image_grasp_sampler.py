@@ -111,7 +111,8 @@ class ImageGraspSampler(object):
         grasps = self._sample(depth, camera, num_samples)
         logger.debug('Sampled %d grasp candidates from the image.'
                      % (len(grasps)))
-
+        if len(grasps) == 0:
+            grasps = np.ones(shape=[1, 5], dtype=np.float32)
         return grasps
 
     @abstractmethod
@@ -257,7 +258,8 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
         # Return if no edge pixels
         num_pixels = edge_pixels.shape[0]
         if num_pixels == 0:
-            return []
+            grasps = np.ones(shape=[1, 5], dtype=np.float32)
+            return grasps
 
         # Compute surface normals.
         edge_normals = surface_normals(image_filtered, edge_pixels)
@@ -285,7 +287,8 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
         # Return if no antipodal pairs.
         num_pairs = valid_indices.shape[0]
         if num_pairs == 0:
-            return []
+            grasps = np.ones(shape=[1, 5], dtype=np.float32)
+            return grasps
 
         sample_size = min(self.max_rejection_samples, num_pairs)
         candidate_pair_indices = np.random.choice(
