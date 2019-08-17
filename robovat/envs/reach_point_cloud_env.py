@@ -213,8 +213,12 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
         #
         is_good_grasp = self._execute_action_grasping(action_grasp)
 
-        if self.is_training and not is_good_grasp:
-            return
+        if not is_good_grasp:
+            if self.is_training:
+                return
+            else:
+                self.grasp_cornercase = True
+                return
         #
         # Hammering
         #
@@ -388,7 +392,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                             return
 
                 elif phase == 'start':
-                    self.grasp_cornercase = False
+                    pass
 
                 elif phase == 'end':
                     pass
@@ -406,8 +410,6 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
         plt.close()
 
     def _good_grasp(self, pre, post, thres=0.02):
-        if not self.is_training:
-            return True
         trans = np.linalg.norm(pre - post)
         logger.debug('The tool slips {:.3f}'.format(trans))
         return trans < thres

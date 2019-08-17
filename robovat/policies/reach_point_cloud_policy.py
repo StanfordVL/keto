@@ -73,26 +73,6 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
              [tf.sin(rz), tf.cos(rz), zero],
              [zero, zero, one]], [3, 3])
         return mat
-
-    """
-    def _action(self,
-                time_step,
-                policy_state,
-                seed,
-                scale=20):
-        point_cloud_tf = time_step.observation['point_cloud']
-    
-        g_kp, f_kp, f_v = tf.py_func(reach_keypoints_heuristic,
-                                     [point_cloud_tf],
-                                     [tf.float32, tf.float32, tf.float32])
-    
-        keypoints, f_v, _ = forward_keypoint(
-                point_cloud_tf * scale,
-                num_funct_vect=1)
-        g_kp, f_kp = keypoints
-        g_kp = g_kp / scale
-        f_kp = f_kp / scale
-    """
         
     def _keypoints_heuristic(self, point_cloud_tf):
         point_cloud_tf = tf.Print(
@@ -108,6 +88,7 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 point_cloud_tf, [], message='Using network policy')
         keypoints, f_v, _ = forward_keypoint(
                 point_cloud_tf * scale,
+                num_samples=256,
                 num_funct_vect=1)
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
@@ -132,7 +113,9 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         keypoints = tf.expand_dims(keypoints, axis=0)
 
         action, score = forward_grasp(
-            point_cloud_tf * scale, g_kp * scale)
+            point_cloud_tf * scale, 
+            g_kp * scale,
+            num_samples=128)
 
         action = tf.expand_dims(action, 0)
         xyz, rx, ry, rz = tf.split(action,
@@ -182,8 +165,11 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             g_xy - force * 0.12, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
+
+        reach_distance = 0.0 if self.is_training else 0.1 * force
+
         target_pose = tf.concat([
-            g_xy, tf.constant([0.18], dtype=tf.float32),
+            g_xy + reach_distance, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

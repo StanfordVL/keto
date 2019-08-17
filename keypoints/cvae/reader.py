@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO)
 
 class GraspReader(object):
 
-    def __init__(self, data_path, trainval_ratio=0.8):
+    def __init__(self, data_path, trainval_ratio=0.9):
         logging.info('Loading {}'.format(data_path))
         f = h5py.File(data_path, 'r')
         self.pos_p = f['pos_point_cloud']
@@ -17,9 +17,9 @@ class GraspReader(object):
         print('Number positive: {}, negative: {}'.format(
             self.pos_p.shape[0], self.neg_p.shape[0]))
         print('Point cloud std: {}'.format(
-            np.std(self.pos_p, axis=(0, 1))))
+            np.std(self.pos_p[:256], axis=(0, 1))))
         print('Grasp std: {}'.format(
-            np.std(self.pos_g, axis=0)))
+            np.std(self.pos_g[:256], axis=0)))
         return
 
     def make_suitable(self, indices):

@@ -187,7 +187,8 @@ class General(Body):
         """
         # The orthogonal T-Shape hammer.
         rotations = np.random.uniform(
-                low=0, high=np.pi*2, size=[2, 3]) * np.array([1, 1, 0])
+                low=-np.pi, high=np.pi, size=[2, 3]
+                ) * np.array([1.0, 0.2, 0.0])
 
         mean_size_a = (part_a_data['size_x'] + part_a_data['size_y'] +
                        part_a_data['size_z']) / 3.0

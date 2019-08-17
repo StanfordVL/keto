@@ -2,8 +2,8 @@ import os
 import h5py
 import numpy as np
 
-point_cloud_dir = '../point_cloud'
-grasp_4dof_dir = '../grasp_4dof'
+point_cloud_dir = './point_cloud'
+grasp_4dof_dir = './grasp_4dof'
 save_path = './data.hdf5'
 
 pos_point_cloud = []

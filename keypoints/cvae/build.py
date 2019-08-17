@@ -67,6 +67,8 @@ def visualize(point_cloud, pose_rot, prefix, name,
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
     ax.set_zlabel('Z axis')
+    ax.set_xlim(-0.5, 0.5)
+    ax.set_ylim(-0.5, 0.5)
     ax.set_axis_off()
     ax.grid(False)
 
@@ -906,15 +908,15 @@ def train_vae_keypoint(data_path,
 
 def train_gcnn_grasp(data_path,
                      steps=120000,
-                     batch_size=128,
+                     batch_size=1024,
                      eval_size=128,
                      l2_weight=1e-6,
                      log_step=20,
-                     eval_step=6000,
-                     save_step=6000,
+                     eval_step=3000,
+                     save_step=3000,
                      model_path=None,
-                     optimizer='SGDM',
-                     lr_init=8e-4):
+                     optimizer='Adam',
+                     lr_init=5e-4):
 
     loader = GraspReader(data_path)
     graph = build_grasp_training_graph()
@@ -1048,7 +1050,7 @@ def train_discr_keypoint(data_path,
                          save_step=4000,
                          model_path=None,
                          task_name='task',
-                         optimizer='SGDM'):
+                         optimizer='Adam'):
     loader = KeypointReader(data_path)
     num_funct_vect = loader.num_funct_vect
 
