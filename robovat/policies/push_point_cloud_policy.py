@@ -5,12 +5,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-from tf_agents.policies import random_tf_policy
 from tf_agents.policies import policy_step
-
-from robovat.grasp import image_grasp_sampler
-from robovat.networks import GQCNN
-from robovat.policies import cem_policy
 from robovat.policies import point_cloud_policy
 
 from robovat.math import push_keypoints_heuristic

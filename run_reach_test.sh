@@ -5,6 +5,6 @@ python tools/run_env.py \
   --policy ReachPointCloudPolicy \
   --policy_config configs/policies/reach_point_cloud_policy.yaml \
   --problem ReachPointCloudProblem \
-  --episodic 0 --num_episodes 4096 --debug 0 \
+  --episodic 0 --num_episodes 4096 --debug 1 \
   --output episodes/reach_point_cloud \
-  --checkpoint keypoints/save/reach/cvae_reach
+  --checkpoint keypoints/save/multiple_objects/reach/cvae_reach

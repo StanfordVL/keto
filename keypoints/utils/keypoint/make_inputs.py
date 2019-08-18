@@ -3,7 +3,7 @@ import h5py
 import argparse
 import numpy as np
 
-from  progress.bar import ShadyBar
+from progress.bar import ShadyBar
 
 parser = argparse.ArgumentParser()
 

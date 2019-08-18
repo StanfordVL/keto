@@ -6,7 +6,7 @@ from sklearn import linear_model
 
 
 def hammer_keypoints_heuristic(point_cloud,
-                               n_clusters=8):
+                               n_clusters=12):
     p = np.squeeze(point_cloud)
     center = np.mean(p, axis=0)
     kmeans = KMeans(
@@ -98,7 +98,7 @@ def push_keypoints_heuristic(point_cloud,
 
 
 def reach_keypoints_heuristic(point_cloud,
-                              n_clusters=8):
+                              n_clusters=12):
     p = np.squeeze(point_cloud)
     kmeans = KMeans(
         n_clusters=n_clusters,

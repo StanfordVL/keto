@@ -304,8 +304,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                             rolling_friction=1000,
                             spinning_friction=1000)
                         self.table.set_dynamics(
-                            lateral_friction=0.3 if self.is_training else 0.01)
-        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose)
+                            lateral_friction=0.8 if self.is_training else 0.01)
+        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.03)
         good_rot = self._good_grasp(np.sin(pre_grasp_euler - post_grasp_euler),
                 0, thres=0.17)
         return good_loc

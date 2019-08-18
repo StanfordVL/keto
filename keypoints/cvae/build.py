@@ -135,7 +135,7 @@ def visualize_keypoints(point_cloud,
 def rectify_keypoints(point_cloud,
                       grasp_point,
                       funct_point,
-                      grasp_clusters=10,
+                      grasp_clusters=12,
                       funct_clusters=32):
 
     p = np.squeeze(point_cloud)
@@ -151,8 +151,7 @@ def rectify_keypoints(point_cloud,
         n_clusters=funct_clusters,
         random_state=0).fit(p)
     centers = kmeans.cluster_centers_
-    hull = ConvexHull(centers[:, :2])
-    hull = centers[hull.vertices]
+    hull = centers
     hull_index = np.argsort(
         np.linalg.norm(funct_point - hull, axis=1))[0]
     funct_point = hull[np.newaxis, hull_index].astype(np.float32)
@@ -663,8 +662,8 @@ def forward_keypoint(point_cloud_tf,
 
 def train_vae_grasp(data_path,
                     steps=120000,
-                    batch_size=128,
-                    eval_size=32,
+                    batch_size=256,
+                    eval_size=64,
                     l2_weight=1e-6,
                     log_step=20,
                     eval_step=6000,
@@ -795,7 +794,7 @@ def train_vae_grasp(data_path,
 
 def train_vae_keypoint(data_path,
                        steps=120000,
-                       batch_size=128,
+                       batch_size=256,
                        eval_size=128,
                        l2_weight=1e-6,
                        log_step=20,
@@ -908,15 +907,15 @@ def train_vae_keypoint(data_path,
 
 def train_gcnn_grasp(data_path,
                      steps=120000,
-                     batch_size=1024,
-                     eval_size=128,
+                     batch_size=256,
+                     eval_size=64,
                      l2_weight=1e-6,
                      log_step=20,
-                     eval_step=3000,
-                     save_step=3000,
+                     eval_step=6000,
+                     save_step=6000,
                      model_path=None,
-                     optimizer='Adam',
-                     lr_init=5e-4):
+                     optimizer='SGDM',
+                     lr_init=8e-4):
 
     loader = GraspReader(data_path)
     graph = build_grasp_training_graph()
@@ -1004,7 +1003,7 @@ def train_gcnn_grasp(data_path,
                 running_log.write(
                     'gcnn', 'Validation acc: {:.2f}, prec: {:.2f}'.format(
                         acc_np * 100, prec_np * 100))
-
+                """
                 for index in range(pos_p_np.shape[0]):
                     visualize(pos_p_np[index],
                               pos_g_np[np.newaxis, index],
@@ -1015,7 +1014,7 @@ def train_gcnn_grasp(data_path,
                               './runs/gcnn/plot',
                               str(step).zfill(6) + '_' +
                               str(index).zfill(3) + '_aligned')
-
+                """
 
 def load_samples(loader, batch_size, stage, noise_level=0.2):
     if stage == 'train':

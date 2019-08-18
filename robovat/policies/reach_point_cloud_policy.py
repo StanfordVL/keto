@@ -156,8 +156,13 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
 
 
+        pre_pre_pre_target_pose = tf.concat([
+            g_xy - force * 0.25, tf.constant([0.4], dtype=tf.float32),
+            [g_rz]],
+            axis=0)
+
         pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.17, tf.constant([0.4], dtype=tf.float32),
+            g_xy - force * 0.25, tf.constant([0.20], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
@@ -174,7 +179,8 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             axis=0)
 
         action_task = self._concat_actions(
-            [target_force, pre_pre_target_pose, pre_target_pose, target_pose])
+            [target_force, pre_pre_pre_target_pose, 
+                pre_pre_target_pose, pre_target_pose, target_pose])
 
         action = {'grasp': action_4dof,
                   'task': action_task,

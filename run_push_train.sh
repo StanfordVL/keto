@@ -7,4 +7,4 @@ python tools/run_env.py \
   --problem PushPointCloudProblem \
   --episodic 0 --num_episodes 8192 --debug 1  \
   --output episodes/push_point_cloud \
-  --checkpoint keypoints/save/push/cvae_push
+  --checkpoint keypoints/save/multiple_objects/push/cvae_push

@@ -312,7 +312,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         self.robot.arm,
                         self.graspable)
 
-        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose)
+        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.03)
         return good_loc
 
     def _execute_action_reaching(self, action):

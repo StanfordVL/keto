@@ -7,4 +7,4 @@ python tools/run_env.py \
   --problem HammerPointCloudProblem \
   --episodic 0 --num_episodes 8192 --debug 1 \
   --output episodes/hammer_point_cloud_second \
-  --checkpoint keypoints/save/hammer/cvae_model
+  --checkpoint keypoints/save/multiple_objects/hammer/cvae_hammer

@@ -289,15 +289,15 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=1000,
-                            rolling_friction=100,
-                            spinning_friction=100)
+                            lateral_friction=10000,
+                            rolling_friction=10000,
+                            spinning_friction=10000)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=1000,
-                            rolling_friction=1000,
-                            spinning_friction=1000)
+                            lateral_friction=10000,
+                            rolling_friction=10000,
+                            spinning_friction=10000)
                         self.table.set_dynamics(
-                            lateral_friction=1)
+                            lateral_friction=10)
 
                     self.simulator.wait_until_stable(self.graspable) 
                     self.grasp_success = self.simulator.check_contact(
