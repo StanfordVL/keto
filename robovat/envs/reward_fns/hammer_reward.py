@@ -36,8 +36,10 @@ class HammerReward(reward_fn.RewardFn):
         self.target = self.env.simulator.bodies[self.target_name]
         self.target_pose_init = np.array(
                 self.target.pose.position)
+        self.env.target_pose_init = self.target_pose_init
         self.graspable = self.env.simulator.bodies[self.graspable_name]
         self.env.timeout = False
+        self.env.task_fail = False
 
     def get_reward(self):
         """Returns the reward value of the current step."""
@@ -45,7 +47,7 @@ class HammerReward(reward_fn.RewardFn):
             self.env.simulator.wait_until_stable(self.target)
             target_pose = np.array(self.target.pose.position)
             hammer_depth = target_pose[0] - self.target_pose_init[0]
-            success = hammer_depth > 0.01
+            success = hammer_depth > 0.01 and not self.env.task_fail
             logger.debug('Hammer depth: %.3f', hammer_depth)
         else:
             raise NotImplementedError

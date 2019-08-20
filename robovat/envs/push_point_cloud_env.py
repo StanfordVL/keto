@@ -75,7 +75,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
             PushReward(
                 name='push_reward',
                 graspable_name=GRASPABLE_NAME,
-                target_name=['target_0', 'target_1'])
+                target_name=['target_0', 'target_1', 'target_2'])
         ]
 
         if self.simulator:
@@ -311,8 +311,6 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                         self.table.set_dynamics(
                             lateral_friction=0.8 if self.is_training else 0.01)
         good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.03)
-        good_rot = self._good_grasp(np.sin(pre_grasp_euler - post_grasp_euler),
-                0, thres=0.17)
         return good_loc
 
     def _execute_action_pushing(self, action):
@@ -341,10 +339,15 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     num_move_steps = action.shape[0]
 
                     for step in range(1, num_move_steps):
+                        error_orien = np.dot(
+                                self.graspable.pose.matrix3, 
+                                np.array([0, 0, 1]))[-1]
+                        if abs(error_orien) > 0.4:
+                            return
                         if self._robot_should_stop():
-                            break
+                            return
                         if self.timeout:
-                            break
+                            return
                         x, y, z, angle = action[step]
                         angle = (angle + np.pi) % (np.pi * 2) - np.pi
 
@@ -373,7 +376,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                         time_start = time.time()
                         while(not ready):
                             if self.timeout:
-                                break
+                                return
                             if time.time() - time_start > 2:
                                 if step < num_move_steps - 1:
                                     self.timeout = True

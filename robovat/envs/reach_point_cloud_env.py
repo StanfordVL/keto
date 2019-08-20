@@ -345,8 +345,13 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                     # self._draw_path(action)
                     num_move_steps = action.shape[0]
                     for step in range(1, num_move_steps):
+                        error_orien = np.dot(
+                                self.graspable.pose.matrix3, 
+                                np.array([0, 0, 1]))[-1]
+                        if abs(error_orien) > 0.2:
+                            return
                         if self.timeout:
-                            break
+                            return
                         x, y, z, angle = action[step]
                         angle = (angle + np.pi) % (np.pi * 2) - np.pi
 
@@ -375,7 +380,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         time_start = time.time()
                         while(not ready):
                             if self.timeout:
-                                break
+                                return
                             self.timeout = (time.time() - time_start > 2
                                             and step != num_move_steps - 1)
                             if self.simulator:

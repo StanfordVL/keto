@@ -17,6 +17,20 @@ data_sublists = [data_list[x:x + batch_size]
                  for x in range(0, len(data_list), batch_size)]
 
 
+class Logger(object):
+
+    def __init__(self, output='./output.log'):
+        self.output = output
+        return
+
+    def write(self, message):
+        with open(self.output, 'a') as f:
+            f.write(message + '\r\n')
+        return
+
+logger = Logger()
+
+
 def save_data(pos_point_cloud,
               neg_point_cloud,
               pos_grasp,
@@ -33,11 +47,11 @@ def save_data(pos_point_cloud,
     neg_grasp = np.concatenate(neg_grasp, axis=0) * scale_grasp
 
     if not os.path.exists(save_path):
-        print('Creating new file')
+        logger.write('Creating new file')
         with h5py.File(save_path, 'w') as f:
             for converted_data in [pos_point_cloud,
                                    pos_grasp, neg_point_cloud, neg_grasp]:
-                print('shape: {}'.format(converted_data.shape))
+                logger.write('shape: {}'.format(converted_data.shape))
 
             f.create_dataset('pos_point_cloud', data=pos_point_cloud,
                              maxshape=(None, 1024, 3))
@@ -57,25 +71,25 @@ def save_data(pos_point_cloud,
             shape = [dataset.shape[0] + pos_point_cloud.shape[0], 1024, 3]
             dataset.resize(shape)
             dataset[-pos_point_cloud.shape[0]:] = pos_point_cloud
-            print('Pos PC shape: {}'.format(shape))
+            logger.write('Pos PC shape: {}'.format(shape))
 
             dataset = f['neg_point_cloud']
             shape = [dataset.shape[0] + neg_point_cloud.shape[0], 1024, 3]
             dataset.resize(shape)
             dataset[-neg_point_cloud.shape[0]:] = neg_point_cloud
-            print('Neg PC shape: {}'.format(shape))
+            logger.write('Neg PC shape: {}'.format(shape))
 
             dataset = f['pos_grasp']
             shape = [dataset.shape[0] + pos_grasp.shape[0], 6]
             dataset.resize(shape)
             dataset[-pos_grasp.shape[0]:] = pos_grasp
-            print('Pos GP shape: {}'.format(shape))
+            logger.write('Pos GP shape: {}'.format(shape))
 
             dataset = f['neg_grasp']
             shape = [dataset.shape[0] + neg_grasp.shape[0], 6]
             dataset.resize(shape)
             dataset[-neg_grasp.shape[0]:] = neg_grasp
-            print('Neg GP shape: {}'.format(shape))
+            logger.write('Neg GP shape: {}'.format(shape))
 
 
 def append_data(data_list, lock, save_path='./data.hdf5'):
@@ -83,10 +97,10 @@ def append_data(data_list, lock, save_path='./data.hdf5'):
     neg_point_cloud = []
     pos_grasp = []
     neg_grasp = []
-    print('List length: {}'.format(len(data_list)))
+    logger.write('List length: {}'.format(len(data_list)))
     for idata, data_name in enumerate(data_list):
         if idata % 100 == 0:
-            print('Appending {}'.format(str(idata).zfill(6)))
+            logger.write('Appending {}'.format(str(idata).zfill(6)))
         with open(os.path.join(
                 point_cloud_dir, data_name), 'rb') as f:
             point_cloud = np.load(f)
@@ -123,7 +137,7 @@ processes = []
 m = Manager()
 lock = m.Lock()
 
-pool = Pool(processes=4)
+pool = Pool(processes=12)
 
 args_append_data = [(data_sublist, lock) for data_sublist in data_sublists]
 

@@ -217,14 +217,21 @@ class PushArmEnv(ArmEnv):
 
     TARGET_REGION = [{
             'x': 0.2,
-            'y': 0.17,
+            'y': 0.14,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
             'yaw': 0},
             {
             'x': 0.2,
-            'y': 0.23,
+            'y': 0.2,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0},
+            {
+            'x': 0.2,
+            'y': 0.26,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,

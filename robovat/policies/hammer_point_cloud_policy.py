@@ -86,22 +86,21 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using heuristic policy')
 
-        g_kp, f_kp = tf.py_func(hammer_keypoints_heuristic,
+        g_kp, f_kp, f_v = tf.py_func(hammer_keypoints_heuristic,
                                 [point_cloud_tf],
-                                [tf.float32, tf.float32])
-        return g_kp, f_kp
+                                [tf.float32, tf.float32, tf.float32])
+        return g_kp, f_kp, f_v
 
     def _keypoints_network(self, point_cloud_tf, scale=20):
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using network policy')
-        keypoints, _, _ = forward_keypoint(
+        keypoints, f_v, _ = forward_keypoint(
                 point_cloud_tf * scale,
-                num_funct_vect=0)
+                num_funct_vect=1)
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
-        return g_kp, f_kp
-
+        return g_kp, f_kp, f_v
 
     def _action(self,
                 time_step,
@@ -111,13 +110,15 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         point_cloud_tf = time_step.observation['point_cloud']
 
         if self.is_training:
-            g_kp, f_kp = tf.cond(tf.random.uniform(shape=()) < 0.8,
+            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 2.0,
                     lambda: self._keypoints_heuristic(point_cloud_tf),
                     lambda: self._keypoints_network(point_cloud_tf))
         else:
-            g_kp, f_kp = self._keypoints_network(point_cloud_tf)
+            g_kp, f_kp, f_v = self._keypoints_network(point_cloud_tf)
 
-        keypoints = tf.expand_dims(tf.concat([g_kp, f_kp], axis=0), 0)
+        keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
+        keypoints = tf.expand_dims(keypoints, axis=0)
+
         action, score = forward_grasp(
             point_cloud_tf * scale, g_kp * scale)
 
@@ -126,19 +127,13 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                                    [3, 1, 1, 1], axis=1)
         action_4dof = tf.concat([xyz / scale, rz], axis=1)
 
-        g_kp = tf.squeeze(g_kp)
+        g_kp = action_4dof[0, :3]
         f_kp = tf.squeeze(f_kp)
+        f_v = tf.squeeze(f_v)
 
-        action_4dof = tf.concat([g_kp[:2], action_4dof[0, 2:]], axis=0)
-        action_4dof = tf.expand_dims(action_4dof, axis=0)
-
-        c = tf.reduce_mean(
-            tf.squeeze(point_cloud_tf), axis=0)
-
-        v_cf = tf.reshape(f_kp - c, [3])
-        v_cg = tf.reshape(g_kp - c, [3])
-        s = tf.sign(v_cg[0] * v_cf[1] -
-                    v_cg[1] * v_cf[0])
+        v_fg = g_kp - f_kp
+        theta = tf.add(tf.atan2(f_v[1], f_v[0]),
+                       -tf.atan2(v_fg[1], v_fg[0]))
 
         action_xy = tf.squeeze(action_4dof[:, :2])
         v_af = -action_xy + f_kp[:2]
@@ -152,9 +147,9 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         target = tf.constant([tx, ty], dtype=tf.float32)
         force = tf.constant([np.cos(trz), np.sin(trz)],
                             dtype=tf.float32)
-        u = tf.constant([0.06], dtype=tf.float32)
+        u = tf.constant([0.04], dtype=tf.float32)
         g_xy, g_rz, g_drz = tf.py_func(solver_hammering,
-                                       [target, force * 0.001, s, d, u],
+                                       [target, force * 0.001, theta, d, u],
                                        [tf.float32, tf.float32, tf.float32])
         g_rz = g_rz - start_rz + action_4dof[0, 3]
 
@@ -173,7 +168,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy - force * 0.04, tf.constant([0.20], dtype=tf.float32),
+            g_xy - force * 0.02, tf.constant([0.20], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

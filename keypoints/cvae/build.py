@@ -513,7 +513,7 @@ def forward_grasp(point_cloud_tf,
                   num_points=1024,
                   num_samples=128,
                   dist_thres=0.2,
-                  dist_kp_thres=0.7):
+                  dist_kp_thres=0.5):
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -651,6 +651,7 @@ def forward_keypoint(point_cloud_tf,
         top_funct_vect = funct_vect_vae[index]
 
     grasp_point, funct_point = top_keypoints
+
     [grasp_point, funct_point
      ] = tf.py_func(rectify_keypoints,
                     [point_cloud_tf, grasp_point, funct_point],
@@ -661,7 +662,7 @@ def forward_keypoint(point_cloud_tf,
 
 
 def train_vae_grasp(data_path,
-                    steps=120000,
+                    steps=60000,
                     batch_size=256,
                     eval_size=64,
                     l2_weight=1e-6,
@@ -906,7 +907,7 @@ def train_vae_keypoint(data_path,
 
 
 def train_gcnn_grasp(data_path,
-                     steps=120000,
+                     steps=60000,
                      batch_size=256,
                      eval_size=64,
                      l2_weight=1e-6,

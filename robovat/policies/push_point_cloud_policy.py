@@ -117,12 +117,9 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                                    [3, 1, 1, 1], axis=1)
         action_4dof = tf.concat([xyz / scale, rz], axis=1)
 
-        g_kp = tf.squeeze(g_kp)
+        g_kp = action_4dof[0, :3]
         f_kp = tf.squeeze(f_kp)
         f_v = tf.squeeze(f_v)
-
-        action_4dof = tf.concat([g_kp[:2], action_4dof[0, 2:]], axis=0)
-        action_4dof = tf.expand_dims(action_4dof, axis=0)
 
         v_fg = g_kp - f_kp
         theta = tf.add(tf.atan2(f_v[1], f_v[0]),
@@ -159,7 +156,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy + force * 0.10, tf.constant([0.18], dtype=tf.float32),
+            g_xy + force * 0.07, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

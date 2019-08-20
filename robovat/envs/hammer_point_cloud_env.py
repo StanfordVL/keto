@@ -225,6 +225,8 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                 self.grasp_cornercase = True
                 return
 
+        if not self.grasp_success:
+            return
         #
         # Hammering
         #
@@ -322,8 +324,6 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                            self.graspable)
 
         good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.03)
-        good_rot = self._good_grasp(np.cos(pre_grasp_euler - post_grasp_euler),
-                1, thres=0.20)
         return good_loc
 
     def _execute_action_hammering(self, action):
@@ -352,8 +352,14 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     num_move_steps = action.shape[0]
                     _, _, _, drz = action[0]
                     for step in range(1, num_move_steps):
+                        error_orien = np.dot(
+                                self.graspable.pose.matrix3, 
+                                np.array([0, 0, 1]))[-1]
+                        if abs(error_orien) > 0.2:
+                            return
                         if self.timeout:
-                            break
+                            return
+
                         x, y, z, angle = action[step]
                         angle = (angle + np.pi) % (np.pi * 2) - np.pi
 
@@ -401,8 +407,14 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
 
                     if self.grasp_success and not current_grasp_success:
                         self.grasp_cornercase = True
-                    else:
-                        self.grasp_cornercase = False
+                        return
+
+                    pre_task_target_pose = np.array(self.target.pose.position)
+                    error_dist = np.linalg.norm(self.target_pose_init -
+                            pre_task_target_pose)
+                    if error_dist > 0.005:
+                        self.task_fail = True
+                        return
                 
                     wrist_joint_angle = self.robot.joint_positions['right_j6']
                     positions = {'right_j6': wrist_joint_angle - drz}

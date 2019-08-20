@@ -13,12 +13,6 @@ class GraspDiscriminator(Network):
                 align(tf.squeeze(x, 2), g), 2)
             _, n, _, _ = x.get_shape().as_list()
 
-            mean_r = tf.reduce_mean(
-                tf.linalg.norm(
-                    x, axis=3, keepdims=True),
-                axis=1, keepdims=True)
-            x = x / (mean_r + 1e-6)
-
             aligned = tf.squeeze(x, 2)
 
             x = self.conv_layer(x, 16, name='conv1_1')
@@ -62,18 +56,6 @@ class KeypointDiscriminator(Network):
                   align(tf.squeeze(x, 2), pose_g), 2)
             x_f = tf.expand_dims(
                   align(tf.squeeze(x, 2), pose_f), 2)
-
-            mean_rg = tf.reduce_mean(
-                tf.linalg.norm(
-                    x_g, axis=3, keepdims=True),
-                axis=1, keepdims=True)
-            mean_rf = tf.reduce_mean(
-                tf.linalg.norm(
-                    x_f, axis=3, keepdims=True),
-                axis=1, keepdims=True)
-
-            x_g = x_g / (mean_rg + mean_rf + 1e-6)
-            x_f = x_f / (mean_rg + mean_rf + 1e-6)
 
             x = tf.concat([x_g, x_f], axis=1)
 

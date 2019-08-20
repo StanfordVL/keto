@@ -56,7 +56,7 @@ class PushReward(reward_fn.RewardFn):
                 target_pose = np.array(target.pose.position)
                 trans = target_pose[0] - pose_init[0]
                 trans_z = abs(target_pose[2] - pose_init[2])
-                suc = trans > 0.05 or trans_z > 0.2
+                suc = trans > 0.05 and trans_z < 0.3
                 all_trans.append(suc)
 
             success = np.all(all_trans)
@@ -70,7 +70,7 @@ class PushReward(reward_fn.RewardFn):
         else:
             self._update_history(success)
             success_rate = np.mean(self.history or [-1])
-            logger.debug('Hammer Success: %r, Success Rate %.3f',
+            logger.debug('Push Success: %r, Success Rate %.3f',
                          success, success_rate)
         return success, self.terminate_after_grasp
 
