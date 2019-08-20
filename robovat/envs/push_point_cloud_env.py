@@ -301,12 +301,12 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=1000,
-                            rolling_friction=1000,
+                            lateral_friction=100,
+                            rolling_friction=100,
                             spinning_friction=1000)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=1000,
-                            rolling_friction=1000,
+                            lateral_friction=100,
+                            rolling_friction=100,
                             spinning_friction=1000)
                         self.table.set_dynamics(
                             lateral_friction=0.8 if self.is_training else 0.01)

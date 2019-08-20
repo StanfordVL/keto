@@ -59,7 +59,7 @@ SIM:
   SLOT_PATH: 'data/sim/envs/tool_hammer/slot_hard.urdf'
   PEG_PATH: 'data/sim/envs/tool_hammer/peg_hard.urdf'
 
-  SLOT_OFFSET: -0.15
+  SLOT_OFFSET: -0.145
   HAMMER_HEIGHT_OFFSET: 0.115
  
   Z_OFFSET: 0.3

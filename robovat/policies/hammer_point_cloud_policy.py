@@ -111,7 +111,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         point_cloud_tf = time_step.observation['point_cloud']
 
         if self.is_training:
-            g_kp, f_kp = tf.cond(tf.random.uniform(shape=()) < 0.5,
+            g_kp, f_kp = tf.cond(tf.random.uniform(shape=()) < 0.8,
                     lambda: self._keypoints_heuristic(point_cloud_tf),
                     lambda: self._keypoints_network(point_cloud_tf))
         else:
@@ -152,7 +152,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         target = tf.constant([tx, ty], dtype=tf.float32)
         force = tf.constant([np.cos(trz), np.sin(trz)],
                             dtype=tf.float32)
-        u = tf.constant([0.04], dtype=tf.float32)
+        u = tf.constant([0.06], dtype=tf.float32)
         g_xy, g_rz, g_drz = tf.py_func(solver_hammering,
                                        [target, force * 0.001, s, d, u],
                                        [tf.float32, tf.float32, tf.float32])
@@ -169,11 +169,11 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             axis=0)
 
         pre_target_pose = tf.concat([
-            g_xy - force * 0.09, tf.constant([0.20], dtype=tf.float32),
+            g_xy - force * 0.10, tf.constant([0.20], dtype=tf.float32),
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy - force * 0.02, tf.constant([0.20], dtype=tf.float32),
+            g_xy - force * 0.04, tf.constant([0.20], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

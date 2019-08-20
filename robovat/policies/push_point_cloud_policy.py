@@ -100,7 +100,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         point_cloud_tf = time_step.observation['point_cloud']
         
         if self.is_training:
-            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 0.5,
+            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 0.8,
                     lambda: self._keypoints_heuristic(point_cloud_tf),
                     lambda: self._keypoints_network(point_cloud_tf))
         else:

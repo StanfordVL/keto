@@ -302,13 +302,13 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=1000,
-                            rolling_friction=1000,
-                            spinning_friction=10000)
+                            lateral_friction=100,
+                            rolling_friction=100,
+                            spinning_friction=1000)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=1000,
-                            rolling_friction=1000,
-                            spinning_friction=10000)
+                            lateral_friction=100,
+                            rolling_friction=100,
+                            spinning_friction=1000)
                         self.table.set_dynamics(
                             lateral_friction=1)
 
