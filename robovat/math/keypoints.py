@@ -5,6 +5,9 @@ from sklearn.cluster import KMeans
 from sklearn import linear_model
 
 
+def make_noisy(x, std=0.001):
+    return x + np.random.normal(size=np.shape(x)) * std
+
 def hammer_keypoints_heuristic(point_cloud,
                                n_clusters=12):
     p = np.squeeze(point_cloud)
@@ -13,7 +16,7 @@ def hammer_keypoints_heuristic(point_cloud,
         n_clusters=n_clusters,
         random_state=0).fit(p)
     centers = kmeans.cluster_centers_
-    hull = ConvexHull(centers[:, :2])
+    hull = ConvexHull(make_noisy(centers[:, :2]))
     hull = centers[hull.vertices]
     success = False
     while not success:
@@ -38,7 +41,7 @@ def hammer_keypoints_heuristic(point_cloud,
         n_clusters=32,
         random_state=0).fit(p)
     centers_dense = kmeans.cluster_centers_
-    hull = ConvexHull(centers_dense[:, :2])
+    hull = ConvexHull(make_noisy(centers_dense[:, :2]))
     hull = centers_dense[hull.vertices]
     hull_index = np.argsort(
             np.linalg.norm(func_point - hull, axis=1))[0]
@@ -54,7 +57,7 @@ def push_keypoints_heuristic(point_cloud,
         n_clusters=n_clusters,
         random_state=0).fit(p)
     centers = kmeans.cluster_centers_
-    hull = ConvexHull(centers[:, :2])
+    hull = ConvexHull(make_noisy(centers[:, :2]))
     hull = centers[hull.vertices]
 
     func_point_init = random.choice(centers)
@@ -104,7 +107,7 @@ def reach_keypoints_heuristic(point_cloud,
         n_clusters=n_clusters,
         random_state=0).fit(p)
     centers = kmeans.cluster_centers_
-    hull = ConvexHull(centers[:, :2])
+    hull = ConvexHull(make_noisy(centers[:, :2]))
     hull = centers[hull.vertices]
     grasp_point = random.choice(centers).reshape([1, 3])
     invalid = np.amin(np.linalg.norm(
@@ -195,7 +198,7 @@ def search_keypoints(point_cloud,
         n_clusters=32,
         random_state=0).fit(p)
     centers_dense = kmeans.cluster_centers_
-    hull = ConvexHull(centers_dense[:, :2])
+    hull = ConvexHull(make_noisy(centers_dense[:, :2]))
     hull = centers_dense[hull.vertices]
     hull_index = np.argsort(
             np.linalg.norm(func_point - hull, axis=1))[0]

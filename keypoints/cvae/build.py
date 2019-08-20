@@ -817,7 +817,7 @@ def train_vae_keypoint(data_path,
     loss_vae_grasp = graph['loss_vae_grasp']
     loss_vae_funct = graph['loss_vae_funct']
     loss_vae_funct_vect = graph['loss_vae_funct_vect']
-    loss_vae_mmd = graph['loss_vae_mmd'] * 0.01
+    loss_vae_mmd = graph['loss_vae_mmd'] * 0.005
 
     z_mean = graph['z_mean']
     z_std = graph['z_std']
@@ -1118,7 +1118,7 @@ def train_discr_keypoint(data_path,
                 feed_dict=feed_dict)
 
             if step % log_step == 0:
-                running_log.write('discr',
+                running_log.write('discr_{}'.format(task_name),
                                   'step: {}/{}, '.format(step, steps) +
                                   'loss: {:.3f}, acc: {:.3f}'.format(
                                       loss_np, acc_np * 100))

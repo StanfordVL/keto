@@ -35,7 +35,7 @@ SIM:
 
   GRASPABLE:
     PATHS: [
-    'data/sim/outputs/*/*.urdf'
+    'data/sim/train/*/*.urdf'
     ]
     POSE:
       X: 0.1

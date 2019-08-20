@@ -83,7 +83,12 @@ class Grasp4DofEnv(arm_env.ArmEnv):
             self.all_graspable_paths = []
             self.graspable_index = 0
 
-            for pattern in self.config.SIM.GRASPABLE.PATHS:
+            if is_training:
+                gpaths = self.config.SIM.GRASPABLE.PATHS
+            else:
+                gpaths = self.config.SIM.GRASPABLE.TEST_PATHS
+
+            for pattern in gpaths:
                 if pattern[-4:] == '.txt':
                     with open(pattern, 'r') as f:
                         paths = [line.rstrip('\n') for line in f]
@@ -96,7 +101,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
             num_graspable_paths = len(self.all_graspable_paths)
             assert num_graspable_paths > 0, (
                 'Found no graspable objects at %s'
-                % (self.config.SIM.GRASPABLE.PATHS))
+                % (gpaths))
             logger.debug('Found %d graspable objects.', num_graspable_paths)
 
             self.init_record()
@@ -135,7 +140,7 @@ class Grasp4DofEnv(arm_env.ArmEnv):
         print(self.success_record)
         return
 
-    def choose_graspable_index(self, explore_prob=0.7):
+    def choose_graspable_index(self, explore_prob=2.0):
         if np.random.uniform() < explore_prob:
             return np.random.randint(len(self.all_graspable_paths))
         record = self.success_record + np.random.normal(
@@ -244,6 +249,9 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                     self.robot.move_to_gripper_pose(prestart)
 
                 elif phase == 'start':
+                    pre_grasp_pose = np.array(self.graspable.pose.position)
+                    pre_grasp_euler = self.graspable.pose.euler
+
                     self.robot.move_to_gripper_pose(start, straight_line=True)
 
                     # Prevent problems caused by unrealistic frictions.
@@ -259,8 +267,10 @@ class Grasp4DofEnv(arm_env.ArmEnv):
 
                 elif phase == 'end':
                     self.robot.grip(1)
-
+                        
                 elif phase == 'postend':
+                    post_grasp_pose = np.array(self.graspable.pose.position)
+
                     postend = self.robot.end_effector.pose
                     postend.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
                     self.robot.move_to_gripper_pose(postend, straight_line=True)
@@ -269,15 +279,32 @@ class Grasp4DofEnv(arm_env.ArmEnv):
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
                             lateral_friction=100,
-                            rolling_friction=10,
-                            spinning_friction=10)
+                            rolling_friction=100,
+                            spinning_friction=1000)
                         self.robot.r_finger_tip.set_dynamics(
                             lateral_friction=100,
-                            rolling_friction=10,
-                            spinning_friction=10)
+                            rolling_friction=100,
+                            spinning_friction=1000)
                         self.table.set_dynamics(
                             lateral_friction=1)
-        
+
+        post_grasp_euler = self.graspable.pose.euler
+        good_loc = self._good_grasp(
+                       pre_grasp_pose, post_grasp_pose, thres=0.03)
+        good_rot = self._good_grasp(
+                       np.cos(pre_grasp_euler - post_grasp_euler),
+                            1, thres=0.20)
+        good_grasp = good_loc and good_rot
+
+        if not good_grasp:
+            self.grasp_cornercase = True
+
+
+    def _good_grasp(self, pre, post, thres=0.02):
+        trans = np.linalg.norm(pre - post)
+        logger.debug('The tool slips {:.3f}'.format(trans))
+        return trans < thres
+
     def get_next_phase(self, phase):
         """Get the next phase of the current phase.
 

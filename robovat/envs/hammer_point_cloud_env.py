@@ -84,8 +84,13 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
             self.graspable_pose = None
             self.all_graspable_paths = []
             self.graspable_index = 0
+ 
+            if is_training:
+                gpaths = self.config.SIM.GRASPABLE.PATHS
+            else:
+                gpaths = self.config.SIM.GRASPABLE.TEST_PATHS
 
-            for pattern in self.config.SIM.GRASPABLE.PATHS:
+            for pattern in gpaths:
                 if pattern[-4:] == '.txt':
                     with open(pattern, 'r') as f:
                         paths = [line.rstrip('\n') for line in f]
@@ -98,7 +103,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
             num_graspable_paths = len(self.all_graspable_paths)
             assert num_graspable_paths > 0, (
                 'Found no graspable objects at %s'
-                % (self.config.SIM.GRASPABLE.PATHS))
+                % (gpaths))
             logger.debug('Found %d graspable objects.', num_graspable_paths)
 
         super(HammerPointCloudEnv, self).__init__(
@@ -211,7 +216,14 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
         #
         # Grasping
         #
-        self._execute_action_grasping(action_grasp)
+        is_good_grasp = self._execute_action_grasping(action_grasp)
+
+        if not is_good_grasp:
+            if self.is_training:
+                return
+            else:
+                self.grasp_cornercase = True
+                return
 
         #
         # Hammering
@@ -263,6 +275,9 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     self.robot.move_to_gripper_pose(prestart)
 
                 elif phase == 'start':
+                    pre_grasp_pose = np.array(self.graspable.pose.position)
+                    pre_grasp_euler = self.graspable.pose.euler
+
                     self.robot.move_to_gripper_pose(start, straight_line=True)
 
                     # Prevent problems caused by unrealistic frictions.
@@ -278,31 +293,38 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
 
                 elif phase == 'end':
                     self.robot.grip(1)
+                    post_grasp_pose = np.array(self.graspable.pose.position)
 
                 elif phase == 'postend':
                     postend = self.robot.end_effector.pose
                     postend.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
                     self.robot.move_to_gripper_pose(
                         postend,
-                        straight_line=True, speed=0.3)
+                        straight_line=True, speed=1.0)
+                    post_grasp_euler = self.graspable.pose.euler
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=10000,
-                            rolling_friction=10000,
+                            lateral_friction=1000,
+                            rolling_friction=1000,
                             spinning_friction=10000)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=10000,
-                            rolling_friction=10000,
+                            lateral_friction=1000,
+                            rolling_friction=1000,
                             spinning_friction=10000)
                         self.table.set_dynamics(
-                            lateral_friction=10)
+                            lateral_friction=1)
 
                     self.simulator.wait_until_stable(self.graspable) 
                     self.grasp_success = self.simulator.check_contact(
                            self.robot.arm,
                            self.graspable)
+
+        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.03)
+        good_rot = self._good_grasp(np.cos(pre_grasp_euler - post_grasp_euler),
+                1, thres=0.20)
+        return good_loc
 
     def _execute_action_hammering(self, action):
         """Execute the hammering action.
@@ -355,12 +377,12 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
-                            speed=0.1)
+                            speed=0.7)
                         ready = False
                         time_start = time.time()
                         while(not ready):
                             if self.timeout:
-                                break
+                                return
                             if time.time() - time_start > 2:
                                 self.timeout = True
                             if self.simulator:
@@ -384,22 +406,22 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                 
                     wrist_joint_angle = self.robot.joint_positions['right_j6']
                     positions = {'right_j6': wrist_joint_angle - drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                    self.robot.move_to_joint_positions(positions, speed=1.0,
                                                        timeout=2)
 
                     self._wait_until_ready(phase, num_action_steps)
                     positions = {'right_j6': wrist_joint_angle + drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                    self.robot.move_to_joint_positions(positions, speed=1.0,
                                                        timeout=2)
 
                     self._wait_until_ready(phase, num_action_steps)
                     positions = {'right_j6': wrist_joint_angle - drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                    self.robot.move_to_joint_positions(positions, speed=1.0,
                                                        timeout=2)
 
                     self._wait_until_ready(phase, num_action_steps)
                     positions = {'right_j6': wrist_joint_angle + drz}
-                    self.robot.move_to_joint_positions(positions, speed=0.5,
+                    self.robot.move_to_joint_positions(positions, speed=1.0,
                                                        timeout=2)
 
                 elif phase == 'end':
@@ -425,6 +447,13 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
             ready = self.is_phase_ready(
                 phase, num_action_steps)
         return
+
+    def _good_grasp(self, pre, post, thres=0.02):
+        if not self.is_training:
+            return True
+        trans = np.linalg.norm(pre - post)
+        logger.debug('The tool slips {:.3f}'.format(trans))
+        return trans < thres
 
     def get_next_phase(self, phase):
         """Get the next phase of the current phase.

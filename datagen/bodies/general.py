@@ -13,21 +13,21 @@ from utils.transformations import matrix3_from_euler
 
 FLIP_PROB = 0.5
 
-LATERAL_FRICTION_RANGE = [0.9, 1.0]
-SPINNING_FRICTION_RANGE = [0.9, 1.0]
-INERTIA_FRICTION_RANGE = [0.9, 1.0]
+LATERAL_FRICTION_RANGE = [0.5, 1.0]
+SPINNING_FRICTION_RANGE = [0.5, 1.0]
+INERTIA_FRICTION_RANGE = [0.5, 1.0]
 
 MAIN_CONFIG = {
-        'mass_range': [0.00, 0.001],
-        'size_range': [[0.03, 0.04], [0.03, 0.04], [0.20, 0.30]],
+        'mass_range': [0.2, 0.4],
+        'size_range': [[0.02, 0.04], [0.02, 0.04], [0.20, 0.30]],
         'lateral_friction_range': LATERAL_FRICTION_RANGE,
         'spinning_friction_range': SPINNING_FRICTION_RANGE,
         'inertia_friction_range': INERTIA_FRICTION_RANGE,
         }
 
 PART_CONFIG = {
-        'mass_range': [0.000, 0.001],
-        'size_range': [[0.02, 0.04], [0.02, 0.04], [0.03, 0.15]],
+        'mass_range': [0.04, 0.08],
+        'size_range': [[0.02, 0.04], [0.02, 0.04], [0.00, 0.20]],
         'lateral_friction_range': LATERAL_FRICTION_RANGE,
         'spinning_friction_range': SPINNING_FRICTION_RANGE,
         'inertia_friction_range': INERTIA_FRICTION_RANGE,
@@ -188,7 +188,7 @@ class General(Body):
         # The orthogonal T-Shape hammer.
         rotations = np.random.uniform(
                 low=-np.pi, high=np.pi, size=[2, 3]
-                ) * np.array([1.0, 0.2, 0.0])
+                ) * np.array([0.4, 0.2, 0.0]) + np.array([np.pi/2, 0, 0])
 
         mean_size_a = (part_a_data['size_x'] + part_a_data['size_y'] +
                        part_a_data['size_z']) / 3.0

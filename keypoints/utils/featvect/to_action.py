@@ -67,5 +67,64 @@ f_output.create_dataset('pos_action', shape=[num_pos, 3])
 f_output.create_dataset('neg_point_cloud', shape=[num_neg, 1024, 3])
 f_output.create_dataset('neg_action', shape=[num_neg, 3])
 
-for index in range(num_pos):
-    pass 
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+config.allow_soft_placement = True
+
+with tf.Session(config=config) as sess:
+
+    for index in range(num_pos):
+        pc = pos_point_cloud[index]
+        g_kp_np, f_kp_np, f_v_np = np.split(
+                np.squeeze(pos_keypoints[index]), [1, 2], axis=0)
+    
+        if args.task_name == 'hammer':
+            c_xy_np, c_rz_np = sess.run([c_xy, c_rz], 
+                    feed_dict={point_cloud_tf: pc,
+                               grasp_point_tf: np.squeeze(g_kp_np),
+                               funct_point_tf: np.squeeze(f_kp_np)})
+            action = np.array([c_xy_np[0], c_xy_np[1], c_rz_np],
+                    dtype=np.float32)
+            f_output['pos_point_cloud'][index] = pc
+            f_output['pos_action'][index] = action
+
+        elif args.task_name in ['push', 'reach']:
+            c_xy_np, c_rz_np = sess.run([c_xy, c_rz], 
+                    feed_dict={point_cloud_tf: pc,
+                               grasp_point_tf: np.squeeze(g_kp_np),
+                               funct_point_tf: np.squeeze(f_kp_np),
+                               funct_vect_tf: np.squeeze(f_v_np)})
+            action = np.array([c_xy_np[0], c_xy_np[1], c_rz_np],
+                    dtype=np.float32)
+            f_output['pos_point_cloud'][index] = pc
+            f_output['pos_action'][index] = action
+        else:
+            raise NotImplementedError
+
+    for index in range(num_neg):
+        pc = neg_point_cloud[index]
+        g_kp_np, f_kp_np, f_v_np = np.split(
+                np.squeeze(neg_keypoints[index]), [1, 2], axis=0)
+    
+        if args.task_name == 'hammer':
+            c_xy_np, c_rz_np = sess.run([c_xy, c_rz], 
+                    feed_dict={point_cloud_tf: pc,
+                               grasp_point_tf: np.squeeze(g_kp_np),
+                               funct_point_tf: np.squeeze(f_kp_np)})
+            action = np.array([c_xy_np[0], c_xy_np[1], c_rz_np],
+                    dtype=np.float32)
+            f_output['neg_point_cloud'][index] = pc
+            f_output['neg_action'][index] = action
+
+        elif args.task_name in ['push', 'reach']:
+            c_xy_np, c_rz_np = sess.run([c_xy, c_rz], 
+                    feed_dict={point_cloud_tf: pc,
+                               grasp_point_tf: np.squeeze(g_kp_np),
+                               funct_point_tf: np.squeeze(f_kp_np),
+                               funct_vect_tf: np.squeeze(f_v_np)})
+            action = np.array([c_xy_np[0], c_xy_np[1], c_rz_np],
+                    dtype=np.float32)
+            f_output['neg_point_cloud'][index] = pc
+            f_output['neg_action'][index] = action
+        else:
+            raise NotImplementedError

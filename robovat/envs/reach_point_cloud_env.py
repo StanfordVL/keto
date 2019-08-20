@@ -85,7 +85,12 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
             self.all_graspable_paths = []
             self.graspable_index = 0
 
-            for pattern in self.config.SIM.GRASPABLE.PATHS:
+            if is_training:
+                gpaths = self.config.SIM.GRASPABLE.PATHS
+            else:
+                gpaths = self.config.SIM.GRASPABLE.TEST_PATHS
+
+            for pattern in gpaths:
                 if pattern[-4:] == '.txt':
                     with open(pattern, 'r') as f:
                         paths = [line.rstrip('\n') for line in f]
@@ -98,7 +103,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
             num_graspable_paths = len(self.all_graspable_paths)
             assert num_graspable_paths > 0, (
                 'Found no graspable objects at %s'
-                % (self.config.SIM.GRASPABLE.PATHS))
+                % (gpaths))
             logger.debug('Found %d graspable objects.', num_graspable_paths)
 
         super(ReachPointCloudEnv, self).__init__(
@@ -299,11 +304,11 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         self.robot.l_finger_tip.set_dynamics(
                             lateral_friction=1000,
                             rolling_friction=1000,
-                            spinning_friction=1000)
+                            spinning_friction=10000)
                         self.robot.r_finger_tip.set_dynamics(
                             lateral_friction=1000,
                             rolling_friction=1000,
-                            spinning_friction=1000)
+                            spinning_friction=10000)
                         self.table.set_dynamics(
                             lateral_friction=1)
 
@@ -365,7 +370,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
-                            speed=0.7)
+                            speed=1.2)
                         ready = False
                         time_start = time.time()
                         while(not ready):

@@ -45,7 +45,7 @@ class HammerReward(reward_fn.RewardFn):
             self.env.simulator.wait_until_stable(self.target)
             target_pose = np.array(self.target.pose.position)
             hammer_depth = target_pose[0] - self.target_pose_init[0]
-            success = hammer_depth > 0.01 #and hammer_depth <= 0.03
+            success = hammer_depth > 0.01 and hammer_depth <= 0.04
             logger.debug('Hammer depth: %.3f', hammer_depth)
         else:
             raise NotImplementedError

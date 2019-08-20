@@ -39,8 +39,11 @@ SIM:
 
   GRASPABLE:
     PATHS: [
-    'data/sim/outputs/*/*.urdf'
-    ]
+      'data/sim/train/*/*.urdf'
+      ]
+    TEST_PATHS: [
+      'data/sim/test/*/*.urdf'
+      ]
     POSE:
       X: 0.1
       Y: -0.2
@@ -59,7 +62,7 @@ SIM:
   SLOT_OFFSET: -0.15
   HAMMER_HEIGHT_OFFSET: 0.115
  
-  Z_OFFSET: 0.2
+  Z_OFFSET: 0.3
 
 
   MAX_ACTION_STEPS: 4000

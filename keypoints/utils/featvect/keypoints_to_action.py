@@ -25,7 +25,7 @@ def to_action_hammer(point_cloud_tf,
     s = tf.sign(v_cg[0] * v_cf[1] -
                 v_cg[1] * v_cf[0])
 
-    theta = tf.constant(s * np.pi / 2, dtype=tf.float32)
+    theta = s * np.pi / 2
 
     action_xy = g_kp[:2]
     v_af = -action_xy + f_kp[:2]
