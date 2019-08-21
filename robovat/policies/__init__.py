@@ -4,3 +4,4 @@ from .grasp_point_cloud_policy import Grasp4DofPointCloudPolicy
 from .hammer_point_cloud_policy import HammerPointCloudPolicy
 from .push_point_cloud_policy import PushPointCloudPolicy
 from .reach_point_cloud_policy import ReachPointCloudPolicy
+from .pull_point_cloud_policy import PullPointCloudPolicy

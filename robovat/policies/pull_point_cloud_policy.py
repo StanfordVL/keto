@@ -8,7 +8,7 @@ import tensorflow as tf
 from tf_agents.policies import policy_step
 from robovat.policies import point_cloud_policy
 
-from robovat.math import push_keypoints_heuristic
+from robovat.math import pull_keypoints_heuristic
 from robovat.math import solver_general
 
 from robovat.math import Pose, get_transform
@@ -19,11 +19,11 @@ from keypoints.cvae.build import forward_grasp
 nest = tf.contrib.framework.nest
 
 
-class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
+class PullPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
     TARGET_REGION = {
         'x': 0.2,
-        'y': 0.1,
+        'y': 0.2,
         'z': 0.1,
         'roll': 0,
         'pitch': 0,
@@ -31,8 +31,8 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
     }
 
     TABLE_POSE = [
-            [0.6, 0, 0.0], 
-            [0, 0, 0]]
+        [0.6, 0, 0.0],
+        [0, 0, 0]]
 
     def __init__(self,
                  time_step_spec,
@@ -41,7 +41,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                  debug=False,
                  is_training=True):
 
-        super(PushPointCloudPolicy, self).__init__(
+        super(PullPointCloudPolicy, self).__init__(
             time_step_spec,
             action_spec,
             config=config)
@@ -74,19 +74,19 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
     def _keypoints_heuristic(self, point_cloud_tf):
         point_cloud_tf = tf.Print(
-                point_cloud_tf, [], message='Using heuristic policy')
+            point_cloud_tf, [], message='Using heuristic policy')
 
-        g_kp, f_kp, f_v = tf.py_func(push_keypoints_heuristic,
+        g_kp, f_kp, f_v = tf.py_func(pull_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
         return g_kp, f_kp, f_v
 
     def _keypoints_network(self, point_cloud_tf, scale=20):
         point_cloud_tf = tf.Print(
-                point_cloud_tf, [], message='Using network policy')
+            point_cloud_tf, [], message='Using network policy')
         keypoints, f_v, _ = forward_keypoint(
-                point_cloud_tf * scale,
-                num_funct_vect=1)
+            point_cloud_tf * scale,
+            num_funct_vect=1)
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
@@ -95,14 +95,17 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
     def _action(self,
                 time_step,
                 policy_state,
-                seed, 
+                seed,
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
-        
+
         if self.is_training:
-            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 0.8,
-                    lambda: self._keypoints_heuristic(point_cloud_tf),
-                    lambda: self._keypoints_network(point_cloud_tf))
+            [g_kp, f_kp, f_v
+             ] = tf.cond(tf.random.uniform(shape=()) < 2.0,
+                         lambda: self._keypoints_heuristic(
+                 point_cloud_tf),
+                lambda: self._keypoints_network(
+                 point_cloud_tf))
         else:
             g_kp, f_kp, f_v = self._keypoints_network(point_cloud_tf)
 
@@ -148,7 +151,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
 
         overhead_pose = tf.concat([
-            g_xy - force * 0.18, tf.constant([0.40], dtype=tf.float32),
+            g_xy - force * 0.15, tf.constant([0.40], dtype=tf.float32),
             [g_rz]],
             axis=0)
         pre_target_pose = tf.concat([
@@ -156,7 +159,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy + force * 0.05, tf.constant([0.18], dtype=tf.float32),
+            g_xy + force * 0.07, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
@@ -168,4 +171,3 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                   'keypoints': keypoints}
 
         return policy_step.PolicyStep(action, policy_state)
-

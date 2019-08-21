@@ -317,7 +317,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         self.robot.arm,
                         self.graspable)
 
-        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.03)
+        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.04)
         return good_loc
 
     def _execute_action_reaching(self, action):
@@ -348,7 +348,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         error_orien = np.dot(
                                 self.graspable.pose.matrix3, 
                                 np.array([0, 0, 1]))[-1]
-                        if abs(error_orien) > 0.2:
+                        if abs(error_orien) > 0.4:
                             return
                         if self.timeout:
                             return

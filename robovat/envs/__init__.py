@@ -3,3 +3,4 @@ from .grasp_4dof_point_cloud_env import Grasp4DofPointCloudEnv
 from .hammer_point_cloud_env import HammerPointCloudEnv
 from .push_point_cloud_env import PushPointCloudEnv
 from .reach_point_cloud_env import ReachPointCloudEnv
+from .pull_point_cloud_env import PullPointCloudEnv

@@ -10,7 +10,7 @@ from robovat.envs.reward_fns import reward_fn
 from robovat.utils.logging import logger
 
 
-class PushReward(reward_fn.RewardFn):
+class PullReward(reward_fn.RewardFn):
     """Reward function of the environments."""
     
     def __init__(self,
@@ -51,16 +51,13 @@ class PushReward(reward_fn.RewardFn):
         """Returns the reward value of the current step."""
         if self.env.simulator:
             all_trans = []
-            all_trans_z = []
             for target, pose_init in zip(self.target, self.target_pose_init):
                 # self.env.simulator.wait_until_stable(target)
                 target_pose = np.array(target.pose.position)
                 trans = target_pose[0] - pose_init[0]
                 trans_z = abs(target_pose[2] - pose_init[2])
-                suc = trans > 0.05
-                all_trans_z.append(trans_z)
+                suc = trans > 0.05 and trans_z < 0.3
                 all_trans.append(suc)
-            self.env.touch_ground = np.any(np.array(all_trans_z) > 0.3)
 
             success = np.all(all_trans)
 
@@ -78,8 +75,7 @@ class PushReward(reward_fn.RewardFn):
         return success, self.terminate_after_grasp
 
     def _check_cornercase(self):
-        is_cnc = (self.env.timeout or self.env.grasp_cornercase or
-                  self.env.touch_ground)
+        is_cnc = self.env.timeout or self.env.grasp_cornercase
         return is_cnc
 
     def _update_history(self, success):

@@ -36,5 +36,5 @@ def solver_hammering(target, force, theta, d, u):
     return g_xy, g_rz, g_drz
 
 
-def solver_pushing(target, force, theta, d):
+def solver_general(target, force, theta, d):
     return solver_quadratic(target, force, theta, d)

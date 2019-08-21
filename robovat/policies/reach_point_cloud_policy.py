@@ -10,7 +10,7 @@ from tf_agents.policies import policy_step
 from robovat.policies import point_cloud_policy
 
 from robovat.math import reach_keypoints_heuristic
-from robovat.math import solver_pushing
+from robovat.math import solver_general
 
 from robovat.math import Pose, get_transform
 
@@ -143,7 +143,7 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         force = tf.constant([np.cos(trz), np.sin(trz)],
                             dtype=tf.float32)
 
-        g_xy, g_rz = tf.py_func(solver_pushing,
+        g_xy, g_rz = tf.py_func(solver_general,
                                 [target, force * 0.01, theta, d],
                                 [tf.float32, tf.float32])
 

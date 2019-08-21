@@ -513,7 +513,7 @@ def forward_grasp(point_cloud_tf,
                   num_points=1024,
                   num_samples=128,
                   dist_thres=0.2,
-                  dist_kp_thres=0.5):
+                  dist_kp_thres=0.4):
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(

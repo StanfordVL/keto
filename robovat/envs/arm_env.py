@@ -132,7 +132,7 @@ class HammerArmEnv(ArmEnv):
 
     TARGET_REGION = {
             'x': 0.2,
-            'y': 0.15,
+            'y': 0.1,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
@@ -217,21 +217,21 @@ class PushArmEnv(ArmEnv):
 
     TARGET_REGION = [{
             'x': 0.2,
-            'y': 0.14,
+            'y': 0.04,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
             'yaw': 0},
             {
             'x': 0.2,
-            'y': 0.2,
+            'y': 0.1,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
             'yaw': 0},
             {
             'x': 0.2,
-            'y': 0.26,
+            'y': 0.16,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
@@ -382,3 +382,71 @@ class ReachArmEnv(ArmEnv):
                     ceil_pose, 
                     is_static=True,
                     name='ceil')
+
+
+class PullArmEnv(ArmEnv):
+    """The environment of robot pulling."""
+
+    TARGET_REGION = [{
+            'x': 0.2,
+            'y': 0.17,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0},
+            {
+            'x': 0.2,
+            'y': 0.23,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0}]
+
+    def __init__(self,
+                 observations,
+                 reward_fns,
+                 simulator=None,
+                 config=None,
+                 debug=False):
+        """Initialize."""
+        super(PushArmEnv, self).__init__(
+            observations=observations,
+            reward_fns=reward_fns,
+            simulator=simulator,
+            config=config,
+            debug=debug)
+
+    def reset_scene(self):
+        """Reset the scene in simulation or the real world."""
+        if self.simulator:
+            self.ground = self.simulator.add_body(self.config.SIM.GROUND.PATH,
+                                                  self.config.SIM.GROUND.POSE,
+                                                  is_static=True,
+                                                  name='ground')
+
+            self.table_pose = Pose(self.config.SIM.TABLE.POSE)
+            self.table = self.simulator.add_body(self.config.SIM.TABLE.PATH,
+                                                 self.table_pose,
+                                                 is_static=True,
+                                                 name='table')
+            self._reset_task()
+            self.reset_camera()
+
+    def _reset_task(self):
+        """Reset the task region.
+        """
+        # Sample and load a target object.
+        if self.simulator:
+            self.target = []
+
+            for iregion, region in enumerate(self.TARGET_REGION):
+                pose = Pose.uniform(**region)
+                target_pose = get_transform(
+                        source=self.table_pose).transform(pose)
+                target = self.simulator.add_body(
+                    self.config.SIM.TARGET_PATH,
+                    target_pose, 
+                    is_static=False,
+                    name='target_{}'.format(iregion))
+                self.target.append(target)
+

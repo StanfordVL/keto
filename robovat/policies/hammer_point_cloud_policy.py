@@ -24,7 +24,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
     TARGET_REGION = {
         'x': 0.2,
-        'y': 0.15,
+        'y': 0.1,
         'z': 0.1,
         'roll': 0,
         'pitch': 0,
@@ -147,9 +147,9 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         target = tf.constant([tx, ty], dtype=tf.float32)
         force = tf.constant([np.cos(trz), np.sin(trz)],
                             dtype=tf.float32)
-        u = tf.constant([0.04], dtype=tf.float32)
+        u = tf.constant([0.06], dtype=tf.float32)
         g_xy, g_rz, g_drz = tf.py_func(solver_hammering,
-                                       [target, force * 0.001, theta, d, u],
+                                       [target, force * 0.01, theta, d, u],
                                        [tf.float32, tf.float32, tf.float32])
         g_rz = g_rz - start_rz + action_4dof[0, 3]
 
@@ -159,16 +159,16 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             axis=0)
 
         pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.15, tf.constant([0.40], dtype=tf.float32),
+            g_xy - force * 0.18, tf.constant([0.40], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
         pre_target_pose = tf.concat([
-            g_xy - force * 0.10, tf.constant([0.20], dtype=tf.float32),
+            g_xy - force * 0.18, tf.constant([0.21], dtype=tf.float32),
             [g_rz]],
             axis=0)
         target_pose = tf.concat([
-            g_xy - force * 0.02, tf.constant([0.20], dtype=tf.float32),
+            g_xy - force * 0.03, tf.constant([0.20], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

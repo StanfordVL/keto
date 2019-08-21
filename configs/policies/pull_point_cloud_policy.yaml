@@ -1,0 +1,15 @@
+SIM:
+  ARM:
+    CONFIG: 'configs/robots/sawyer.yaml'
+    POSE: [[0, 0, 0], [0, 0, 0]]
+
+  GROUND:
+    PATH: 'data/sim/planes/plane.urdf'
+    POSE: [[0, 0, -0.9], [0, 0, 0]]
+
+  TABLE:
+    PATH: 'data/sim/tables/table_grasp.urdf'
+    POSE: [[0.6, 0, 0.0], [0, 0, 0]]
+
+  TASK:
+    T: 8
