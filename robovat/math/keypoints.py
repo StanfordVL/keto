@@ -8,6 +8,7 @@ from sklearn import linear_model
 def make_noisy(x, std=0.001):
     return x + np.random.normal(size=np.shape(x)) * std
 
+
 def hammer_keypoints_heuristic(point_cloud,
                                n_clusters=12):
     p = np.squeeze(point_cloud)
@@ -41,16 +42,6 @@ def hammer_keypoints_heuristic(point_cloud,
     func_point = np.expand_dims(
         func_point, 0).astype(np.float32)
     
-    kmeans = KMeans(
-        n_clusters=32,
-        random_state=0).fit(p)
-    centers_dense = kmeans.cluster_centers_
-    hull = ConvexHull(make_noisy(centers_dense[:, :2]))
-    hull = centers_dense[hull.vertices]
-    hull_index = np.argmin(
-            np.linalg.norm(func_point - hull, axis=1))
-    func_point = hull[np.newaxis, hull_index]
-
     vect_grasp_func = np.squeeze(grasp_point - func_point)
     k = vect_grasp_func[1] / (vect_grasp_func[0] + 1e-6)
     
@@ -175,9 +166,8 @@ def reach_keypoints_heuristic(point_cloud,
 
 
 def pull_keypoints_heuristic(point_cloud,
-                               n_clusters=12):
+                             n_clusters=12):
     p = np.squeeze(point_cloud)
-    center = np.mean(p, axis=0)
     kmeans = KMeans(
         n_clusters=n_clusters,
         random_state=0).fit(p)
@@ -195,42 +185,27 @@ def pull_keypoints_heuristic(point_cloud,
 
     if centers_head.shape[0] == 0:
         func_point = random.choice(centers)
-    elif centers_head.shape[0] < 3:
-        func_point = random.choice(centers_head)
     else:
-        hull = ConvexHull(make_noisy(centers_head[:, :2]))
-        hull = centers_head[hull.vertices]
-        func_point = random.choice(hull)
+        func_point = random.choice(centers_head)
 
     grasp_point = np.expand_dims(
         grasp_point, 0).astype(np.float32)
     func_point = np.expand_dims(
         func_point, 0).astype(np.float32)
-    
-    kmeans = KMeans(
-        n_clusters=32,
-        random_state=0).fit(p)
-    centers_dense = kmeans.cluster_centers_
-    hull = ConvexHull(make_noisy(centers_dense[:, :2]))
-    hull = centers_dense[hull.vertices]
-    hull_index = np.argmin(
-            np.linalg.norm(func_point - hull, axis=1))
-    func_point = hull[np.newaxis, hull_index]
 
-    vect_grasp_func = np.squeeze(grasp_point - func_point)
-    k = vect_grasp_func[1] / (vect_grasp_func[0] + 1e-6)
-    
-    func_vect = np.reshape(
-        np.array([-k/(1 + k**2)**0.5,
-                  1/(1 + k**2)**0.5, 0.0]), [1, 3])
-    vect_center_func = func_point - center
-    if vect_center_func.dot(func_vect.T) < 0:
-        func_vect = -func_vect
+    func_vect = np.squeeze(grasp_point - func_point)
+    func_vect[2] = 0
+    func_vect = func_vect / (1e-6 + np.linalg.norm(func_vect))
+    s = np.random.choice([1, -1])
+    rot_mat = np.array([[1/np.sqrt(2), -s/np.sqrt(2), 0],
+                        [s/np.sqrt(2), 1/np.sqrt(2), 0],
+                        [0, 0, 1]])
+    func_vect = np.reshape(func_vect.dot(rot_mat), [1, 3])
 
     grasp_point = grasp_point.astype(np.float32)
     func_point = func_point.astype(np.float32)
     func_vect = func_vect.astype(np.float32)
-
+    
     return grasp_point, func_point, func_vect
 
 

@@ -19,6 +19,12 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description='')
 
+    parser.add_argument('--body',
+                        dest='body_type',
+                        help='The body type to genearte.',
+                        type=str,
+                        required=True)
+
     parser.add_argument('--obj',
                         dest='obj_paths',
                         help='Path to the mesh files.',
@@ -54,7 +60,18 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    body_class = bodies.General
+    if args.body_type == 'hammer':
+        body_class = bodies.Hammer
+    elif args.body_type == 't':
+        body_class = bodies.TShape
+    elif args.body_type == 'l':
+        body_class = bodies.LShape
+    elif args.body_type == 'x':
+        body_class = bodies.XShape
+    elif args.body_type == 'general':
+        body_class = bodies.General
+    else:
+        raise ValueError
 
     if args.obj_paths is None:
         obj_paths = None

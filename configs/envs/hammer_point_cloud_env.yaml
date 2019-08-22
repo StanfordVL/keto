@@ -39,10 +39,10 @@ SIM:
 
   GRASPABLE:
     PATHS: [
-      'data/sim/train/*/*.urdf'
+      'data/sim/train/*/*/*.urdf'
       ]
     TEST_PATHS: [
-      'data/sim/test/*/*.urdf'
+      'data/sim/test/*/*/*.urdf'
       ]
     POSE:
       X: 0.1
@@ -59,7 +59,7 @@ SIM:
   SLOT_PATH: 'data/sim/envs/tool_hammer/slot_hard.urdf'
   PEG_PATH: 'data/sim/envs/tool_hammer/peg_hard.urdf'
 
-  SLOT_OFFSET: -0.145
+  SLOT_OFFSET: -0.14
   HAMMER_HEIGHT_OFFSET: 0.115
  
   Z_OFFSET: 0.1

@@ -39,10 +39,10 @@ SIM:
 
   GRASPABLE:
     PATHS: [
-      'data/sim/train/*/*.urdf'
+      'data/sim/train/*/*/*.urdf'
       ]
     TEST_PATHS: [
-      'data/sim/test/*/*.urdf'
+      'data/sim/test/*/*/*.urdf'
       ]
     POSE:
       X: 0.1

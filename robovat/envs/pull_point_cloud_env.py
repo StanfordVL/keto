@@ -75,7 +75,7 @@ class PullPointCloudEnv(arm_env.PullArmEnv):
             PullReward(
                 name='pull_reward',
                 graspable_name=GRASPABLE_NAME,
-                target_name=['target_0', 'target_1'])
+                target_name=['target_0'])
         ]
 
         if self.simulator:
@@ -271,6 +271,7 @@ class PullPointCloudEnv(arm_env.PullArmEnv):
 
                 elif phase == 'start':
                     pre_grasp_pose = np.array(self.graspable.pose.position)
+                    pre_grasp_euler = self.graspable.pose.euler
 
                     self.robot.move_to_gripper_pose(start, straight_line=True)
 
@@ -295,6 +296,7 @@ class PullPointCloudEnv(arm_env.PullArmEnv):
                     self.robot.move_to_gripper_pose(
                         postend,
                         straight_line=True, speed=0.3)
+                    post_grasp_euler = self.graspable.pose.euler
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
@@ -308,7 +310,7 @@ class PullPointCloudEnv(arm_env.PullArmEnv):
                             spinning_friction=1000)
                         self.table.set_dynamics(
                             lateral_friction=0.8 if self.is_training else 0.01)
-        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.03)
+        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.04)
         return good_loc
 
     def _execute_action_pulling(self, action):
@@ -371,13 +373,16 @@ class PullPointCloudEnv(arm_env.PullArmEnv):
                             timeout=2,
                             speed=1.2)
                         ready = False
-                        time_start = time.time()
+                        time_steps = 0
                         while(not ready):
+                            time_steps = time_steps + 1
                             if self.timeout:
                                 return
-                            if time.time() - time_start > 2:
-                                if step < num_move_steps - 1:
-                                    self.timeout = True
+                            if time_steps > self.config.SIM.MAX_ACTION_STEPS:
+                                self.timeout = True
+                            if self.simulator.check_contact(
+                                    self.target[0], self.robot.arm):
+                                return
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(

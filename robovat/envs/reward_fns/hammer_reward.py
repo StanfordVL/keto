@@ -47,7 +47,7 @@ class HammerReward(reward_fn.RewardFn):
             self.env.simulator.wait_until_stable(self.target)
             target_pose = np.array(self.target.pose.position)
             hammer_depth = target_pose[0] - self.target_pose_init[0]
-            success = hammer_depth > 0.01 and not self.env.task_fail
+            success = 2 * int(hammer_depth > 0.01 and not self.env.task_fail)
             logger.debug('Hammer depth: %.3f', hammer_depth)
         else:
             raise NotImplementedError
@@ -57,7 +57,7 @@ class HammerReward(reward_fn.RewardFn):
             success = -1
         else:
             self._update_history(success)
-            success_rate = np.mean(self.history or [-1])
+            success_rate = np.mean(self.history or [-1]) / 2.0
             logger.debug('Hammer Success: %r, Success Rate %.3f',
                          success, success_rate)
         return success, self.terminate_after_grasp

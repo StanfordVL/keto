@@ -356,7 +356,8 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                                 self.graspable.pose.matrix3, 
                                 np.array([0, 0, 1]))[-1]
                         if abs(error_orien) > 0.3:
-                            return
+                            if not self.is_training:
+                                self.grasp_cornercase = True
                         if self.timeout:
                             return
 
@@ -385,11 +386,13 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                             timeout=2,
                             speed=0.7)
                         ready = False
-                        time_start = time.time()
+                        time_steps = 0
                         while(not ready):
+                            time_steps = time_steps + 1
                             if self.timeout:
                                 return
-                            if time.time() - time_start > 2:
+                            if (time_steps > self.config.SIM.MAX_ACTION_STEPS 
+                                    and step != num_move_steps - 1):
                                 self.timeout = True
                             if self.simulator:
                                 self.simulator.step()
@@ -418,10 +421,10 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     pre_task_target_pose = np.array(self.target.pose.position)
                     error_dist = np.linalg.norm(self.target_pose_init -
                             pre_task_target_pose)
-                    if error_dist > 0.005:
+                    if error_dist > 0.01:
                         self.task_fail = True
                         return
-                
+
                     wrist_joint_angle = self.robot.joint_positions['right_j6']
                     positions = {'right_j6': wrist_joint_angle - drz}
                     self.robot.move_to_joint_positions(positions, speed=1.0,

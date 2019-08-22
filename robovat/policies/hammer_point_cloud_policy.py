@@ -127,9 +127,12 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                                    [3, 1, 1, 1], axis=1)
         action_4dof = tf.concat([xyz / scale, rz], axis=1)
 
-        g_kp = action_4dof[0, :3]
+        g_kp = tf.squeeze(g_kp)
         f_kp = tf.squeeze(f_kp)
         f_v = tf.squeeze(f_v)
+
+        action_4dof = tf.concat([g_kp[:2], action_4dof[0, 2:]], axis=0)
+        action_4dof = tf.expand_dims(action_4dof, axis=0)
 
         v_fg = g_kp - f_kp
         theta = tf.add(tf.atan2(f_v[1], f_v[0]),
@@ -167,13 +170,20 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             g_xy - force * 0.18, tf.constant([0.21], dtype=tf.float32),
             [g_rz]],
             axis=0)
+
+        start_target_pose = tf.concat([
+            g_xy - force * 0.07, tf.constant([0.20], dtype=tf.float32),
+            [g_rz]],
+            axis=0)
+
         target_pose = tf.concat([
             g_xy - force * 0.03, tf.constant([0.20], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
         action_task = self._concat_actions(
-            [target_rot, pre_pre_target_pose, pre_target_pose, target_pose])
+            [target_rot, pre_pre_target_pose, pre_target_pose,
+                start_target_pose, target_pose])
 
         action = {'grasp': action_4dof,
                   'task': action_task,

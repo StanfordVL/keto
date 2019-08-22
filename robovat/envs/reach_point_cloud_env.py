@@ -377,12 +377,14 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                             timeout=2,
                             speed=1.2)
                         ready = False
-                        time_start = time.time()
+                        time_steps = 0
                         while(not ready):
+                            time_steps = time_steps + 1
                             if self.timeout:
                                 return
-                            self.timeout = (time.time() - time_start > 2
-                                            and step != num_move_steps - 1)
+                            if time_steps > self.config.SIM.MAX_ACTION_STEPS:
+                                if step != num_move_steps - 1:
+                                    self.timeout = True
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(

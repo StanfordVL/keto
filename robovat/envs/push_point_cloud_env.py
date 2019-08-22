@@ -309,7 +309,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                             rolling_friction=100,
                             spinning_friction=1000)
                         self.table.set_dynamics(
-                            lateral_friction=0.8 if self.is_training else 0.01)
+                            lateral_friction=0.8 if self.is_training else 0.8)
         good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.04)
         return good_loc
 
@@ -373,13 +373,13 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                             timeout=2,
                             speed=1.2)
                         ready = False
-                        time_start = time.time()
+                        time_steps = 0
                         while(not ready):
+                            time_steps = time_steps + 1
                             if self.timeout:
                                 return
-                            if time.time() - time_start > 2:
-                                if step < num_move_steps - 1:
-                                    self.timeout = True
+                            if time_steps > self.config.SIM.MAX_ACTION_STEPS:
+                                self.timeout = True
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(

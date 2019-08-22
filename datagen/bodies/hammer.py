@@ -17,9 +17,9 @@ from utils.transformations import matrix3_from_euler
 
 FLIP_PROB = 0.5
 
-LATERAL_FRICTION_RANGE = [0.2, 1.0]
-SPINNING_FRICTION_RANGE = [0.2, 1.0]
-INERTIA_FRICTION_RANGE = [0.2, 1.0]
+LATERAL_FRICTION_RANGE = [0.9, 1.0]
+SPINNING_FRICTION_RANGE = [0.9, 1.0]
+INERTIA_FRICTION_RANGE = [0.9, 1.0]
 
 HANDLE_CONFIG = {
         'mass_range': [0.4, 0.8],
@@ -30,8 +30,8 @@ HANDLE_CONFIG = {
         }
 
 HEAD_CONFIG = {
-        'mass_range': [0.8, 1.8],
-        'size_range': [[0.03, 0.06], [0.03, 0.06], [0.10, 0.20]],
+        'mass_range': [0.1, 0.3],
+        'size_range': [[0.02, 0.04], [0.02, 0.04], [0.10, 0.20]],
         'lateral_friction_range': LATERAL_FRICTION_RANGE,
         'spinning_friction_range': SPINNING_FRICTION_RANGE,
         'inertia_friction_range': INERTIA_FRICTION_RANGE,

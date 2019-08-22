@@ -54,12 +54,14 @@ class PullReward(reward_fn.RewardFn):
             for target, pose_init in zip(self.target, self.target_pose_init):
                 # self.env.simulator.wait_until_stable(target)
                 target_pose = np.array(target.pose.position)
-                trans = target_pose[0] - pose_init[0]
+                trans = -target_pose[1] + pose_init[1]
+                trans_x = abs(target_pose[0] - pose_init[0])
                 trans_z = abs(target_pose[2] - pose_init[2])
-                suc = trans > 0.05 and trans_z < 0.3
+                logger.debug('Trans: {}'.format(target_pose - pose_init))
+                suc = trans > 0.2 and trans_z < 0.3 and trans_x < 0.05
                 all_trans.append(suc)
 
-            success = np.all(all_trans)
+            success = 2 * int(np.all(all_trans))
 
         else:
             raise NotImplementedError
@@ -69,7 +71,7 @@ class PullReward(reward_fn.RewardFn):
             success = -1
         else:
             self._update_history(success)
-            success_rate = np.mean(self.history or [-1])
+            success_rate = np.mean(self.history or [-1]) / 2.0
             logger.debug('Push Success: %r, Success Rate %.3f',
                          success, success_rate)
         return success, self.terminate_after_grasp

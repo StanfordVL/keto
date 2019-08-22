@@ -389,14 +389,7 @@ class PullArmEnv(ArmEnv):
 
     TARGET_REGION = [{
             'x': 0.2,
-            'y': 0.17,
-            'z': 0.1,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': 0},
-            {
-            'x': 0.2,
-            'y': 0.23,
+            'y': 0.0,
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
@@ -409,7 +402,7 @@ class PullArmEnv(ArmEnv):
                  config=None,
                  debug=False):
         """Initialize."""
-        super(PushArmEnv, self).__init__(
+        super(PullArmEnv, self).__init__(
             observations=observations,
             reward_fns=reward_fns,
             simulator=simulator,
