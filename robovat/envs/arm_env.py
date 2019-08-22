@@ -443,3 +443,101 @@ class PullArmEnv(ArmEnv):
                     name='target_{}'.format(iregion))
                 self.target.append(target)
 
+
+class CombineArmEnv(ArmEnv):
+    """The environment of combine."""
+
+    TARGET_REGION = {
+            'x': 0.20,
+            'y': 0.25,
+            'z': 0.10,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}
+
+    WALL_REGION = [{
+            'x': 0.15,
+            'y': 0.25,
+            'z': 0.05,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2},
+            {
+            'x': 0.25,
+            'y': 0.25,
+            'z': 0.05,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}]
+
+    CEIL_REGION = {
+            'x': 0.20,
+            'y': 0.25,
+            'z': 0.15,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}
+
+    def __init__(self,
+                 observations,
+                 reward_fns,
+                 simulator=None,
+                 config=None,
+                 debug=False):
+        """Initialize."""
+        super(CombineArmEnv, self).__init__(
+            observations=observations,
+            reward_fns=reward_fns,
+            simulator=simulator,
+            config=config,
+            debug=debug)
+
+    def reset_scene(self):
+        """Reset the scene in simulation or the real world."""
+        if self.simulator:
+            self.ground = self.simulator.add_body(self.config.SIM.GROUND.PATH,
+                                                  self.config.SIM.GROUND.POSE,
+                                                  is_static=True,
+                                                  name='ground')
+
+            self.table_pose = Pose(self.config.SIM.TABLE.POSE)
+            self.table = self.simulator.add_body(self.config.SIM.TABLE.PATH,
+                                                 self.table_pose,
+                                                 is_static=True,
+                                                 name='table')
+            self._reset_task()
+            self.reset_camera()
+
+    def _reset_task(self):
+        """Reset the task region.
+        """
+        # Sample and load a target object.
+        if self.simulator:
+            pose = Pose.uniform(**self.TARGET_REGION)
+            target_pose = get_transform(source=self.table_pose).transform(pose)
+            self.target = self.simulator.add_body(
+                    self.config.SIM.TARGET_PATH, 
+                    target_pose, 
+                    is_static=False,
+                    name='target')
+
+            self.walls = []
+            for iregion, region in enumerate(self.WALL_REGION):
+                pose = Pose.uniform(**region)
+                wall_pose = get_transform(
+                        source=self.table_pose).transform(pose)
+                wall = self.simulator.add_body(
+                    self.config.SIM.WALL_PATH,
+                    wall_pose, 
+                    is_static=True,
+                    name='wall_{}'.format(iregion))
+                self.walls.append(wall)
+
+            pose = Pose.uniform(**self.CEIL_REGION)
+            ceil_pose = get_transform(source=self.table_pose).transform(pose)
+            self.ceil = self.simulator.add_body(
+                    self.config.SIM.CEIL_PATH, 
+                    ceil_pose, 
+                    is_static=True,
+                    name='ceil')
+
