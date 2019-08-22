@@ -39,14 +39,14 @@ SIM:
 
   GRASPABLE:
     PATHS: [
-      'data/sim/train/*/*/*.urdf'
+      'data/sim/envs/tool_combine/tool/body.urdf'
       ]
     TEST_PATHS: [
-      'data/sim/test/*/*/*.urdf'
+      'data/sim/envs/tool_combine/tool/body.urdf'
       ]
     POSE:
       X: 0.1
-      Y: -0.2
+      Y: -0.3
       Z: 0.3
       ROLL: [0, 6.28]
       PITCH: [0, 6.28]
@@ -59,6 +59,8 @@ SIM:
   TARGET_PATH: 'data/sim/envs/tool_combine/cube.urdf'
   WALL_PATH: 'data/sim/envs/tool_combine/wall.urdf'
   CEIL_PATH: 'data/sim/envs/tool_combine/ceil.urdf'
+  OBSTACLE_PATH: 'data/sim/envs/tool_combine/cylinder.urdf'
+  SLOT_PATH: 'data/sim/envs/tool_combine/slot_hard.urdf'
 
   HAMMER_HEIGHT_OFFSET: 0.115
  

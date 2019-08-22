@@ -341,67 +341,25 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                     pass
 
                 elif phase == 'prestart':
-                    # move the tool based on action
-                    # self._draw_path(action)
                     num_move_steps = action.shape[0]
                     for step in range(1, num_move_steps):
-                        error_orien = np.dot(
-                                self.graspable.pose.matrix3, 
-                                np.array([0, 0, 1]))[-1]
-                        if abs(error_orien) > 0.4:
-                            return
-                        if self.timeout:
-                            return
                         x, y, z, angle = action[step]
                         angle = (angle + np.pi) % (np.pi * 2) - np.pi
-
-                        [curr_x, curr_y, curr_z
-                         ] = self.robot.end_effector.pose.position
-                        curr_rz = (self.robot.end_effector.pose.euler[2] + np.pi
-                                   ) % (np.pi * 2) - np.pi
-                        gripper_pose = np.array(
-                            [curr_x, curr_y, curr_z, curr_rz])
-
-                        logger.debug('current pose {}'.format(
-                            gripper_pose))
-                        logger.debug('moving to {}'.format(action[step]))
-                        logger.debug('pose delta {}'.format(
-                            action[step] - gripper_pose))
 
                         pose = Pose(
                             [[x, y, z],
                              [0, np.pi, angle]])
-                        # self.plot_pose(pose, 0.1)
+
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
                             speed=1.2)
                         ready = False
-                        time_steps = 0
                         while(not ready):
-                            time_steps = time_steps + 1
-                            if self.timeout:
-                                return
-                            if time_steps > self.config.SIM.MAX_ACTION_STEPS:
-                                if step != num_move_steps - 1:
-                                    self.timeout = True
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(
                                 phase, num_action_steps)
-                        should_stop = self._robot_should_stop()
-                        current_grasp_success = self.simulator.check_contact(
-                            self.robot.arm,
-                            self.graspable)
-                        if self.grasp_success and not current_grasp_success:
-                            self.grasp_cornercase = True
-                            logger.debug('Grasp cornercase')
-                        else:
-                            self.grasp_cornercase = False
-
-                        if should_stop:
-                            logger.debug('The robot should stop')
-                            return
 
                 elif phase == 'start':
                     pass

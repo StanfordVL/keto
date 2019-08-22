@@ -449,7 +449,7 @@ class CombineArmEnv(ArmEnv):
 
     TARGET_REGION = {
             'x': 0.20,
-            'y': 0.25,
+            'y': 0.10,
             'z': 0.10,
             'roll': 0,
             'pitch': 0,
@@ -457,14 +457,14 @@ class CombineArmEnv(ArmEnv):
 
     WALL_REGION = [{
             'x': 0.15,
-            'y': 0.25,
+            'y': 0.10,
             'z': 0.05,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2},
             {
             'x': 0.25,
-            'y': 0.25,
+            'y': 0.10,
             'z': 0.05,
             'roll': 0,
             'pitch': 0,
@@ -472,7 +472,23 @@ class CombineArmEnv(ArmEnv):
 
     CEIL_REGION = {
             'x': 0.20,
-            'y': 0.25,
+            'y': 0.10,
+            'z': 0.15,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}
+
+    OBSTACLE_REGION = [{
+            'x': 0.20,
+            'y': -0.05,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0}]
+
+    SLOT_REGION = {
+            'x': 0.20,
+            'y': 0.40,
             'z': 0.15,
             'roll': 0,
             'pitch': 0,
@@ -541,3 +557,23 @@ class CombineArmEnv(ArmEnv):
                     is_static=True,
                     name='ceil')
 
+            self.obstacles = []
+            for iregion, region in enumerate(self.OBSTACLE_REGION):
+                pose = Pose.uniform(**region)
+                obstacle_pose = get_transform(
+                        source=self.table_pose).transform(pose)
+                obstacle = self.simulator.add_body(
+                    self.config.SIM.OBSTACLE_PATH,
+                    obstacle_pose, 
+                    is_static=False,
+                    name='obstacle_{}'.format(iregion))
+                self.obstacles.append(obstacle)
+
+            pose = Pose.uniform(**self.SLOT_REGION)
+            slot_pose = get_transform(source=self.table_pose).transform(pose)
+            self.slot = self.simulator.add_body(
+                    self.config.SIM.SLOT_PATH, 
+                    slot_pose, 
+                    is_static=True,
+                    name='slot')
+ 
