@@ -53,19 +53,16 @@ for data_name in data_list:
         keypoints_dir, data_name), 'rb'))
     k = np.reshape(k, [-1])
 
-    if k[0] < 0:
-        continue
-
-    elif k[0] == 2.0:
+    if k[0] == 3:
         pos_point_cloud.append(np.reshape(p, [1, 1024, 3]))
         pos_keypoints.append(np.reshape(k[1:], [1, num_keypoints, 3]))
 
-    elif k[0] < 2.0:
+    elif k[0] == 1:
         neg_point_cloud.append(np.reshape(p, [1, 1024, 3]))
         neg_keypoints.append(np.reshape(k[1:], [1, num_keypoints, 3]))
 
     else:
-        raise ValueError
+        pass
 
     bar.next()
 bar.finish()

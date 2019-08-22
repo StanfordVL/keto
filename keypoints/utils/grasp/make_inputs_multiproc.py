@@ -28,6 +28,7 @@ class Logger(object):
             f.write(message + '\r\n')
         return
 
+
 logger = Logger()
 
 
@@ -112,15 +113,17 @@ def append_data(data_list, lock, save_path='./data.hdf5'):
         grasp = grasp_4dof
 
         lock.acquire()
-        if grasp[0] > 0.002:
+        if grasp[0] > 0:
             pos_point_cloud.append(
                 point_cloud[np.newaxis])
             pos_grasp.append(grasp[np.newaxis, 1:])
 
-        else:
+        elif grasp[0] == 0:
             neg_point_cloud.append(
                 point_cloud[np.newaxis])
             neg_grasp.append(grasp[np.newaxis, 1:])
+        else:
+            pass
         lock.release()
 
     lock.acquire()
