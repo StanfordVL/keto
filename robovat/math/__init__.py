@@ -4,11 +4,11 @@ from robovat.math.point import Point
 from robovat.math.pose import Pose
 from robovat.math.quaternion import Quaternion
 from robovat.math.rigid_transforms import get_transform
-from robovat.math.keypoints import search_keypoints
 from robovat.math.keypoints import hammer_keypoints_heuristic
 from robovat.math.keypoints import push_keypoints_heuristic
 from robovat.math.keypoints import reach_keypoints_heuristic
 from robovat.math.keypoints import pull_keypoints_heuristic
+from robovat.math.keypoints import combine_keypoints_heuristic
 from robovat.math.solver import solve_actions
 from robovat.math.solver_quadratic import solver_quadratic
 from robovat.math.solver_quadratic import solver_hammering

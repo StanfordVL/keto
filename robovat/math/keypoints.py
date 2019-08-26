@@ -209,56 +209,48 @@ def pull_keypoints_heuristic(point_cloud,
     return grasp_point, func_point, func_vect
 
 
-def search_keypoints(point_cloud,
-                     n_clusters=8,
-                     n_collision_points=6):
+def combine_keypoints_heuristic(point_cloud,
+                              n_clusters=12):
     p = np.squeeze(point_cloud)
     kmeans = KMeans(
         n_clusters=n_clusters,
         random_state=0).fit(p)
     centers = kmeans.cluster_centers_
-    p_center = np.mean(p,
-                       axis=0,
-                       keepdims=True)
-    dist = np.linalg.norm(
-        centers - p_center, axis=1)
-    indices = np.argsort(dist)[::-1]
-    collision_points = centers[
-        indices[:n_collision_points]]
-    farest_center = np.expand_dims(
-        centers[indices[0]], axis=0)
-    dist_farest = np.linalg.norm(
-        centers - farest_center, axis=1)
-    grasping_point = centers[
-        np.argsort(dist_farest)[1]]
-    grasping_point = np.expand_dims(
-        grasping_point, axis=0)
-    handle_axis = farest_center - grasping_point
-    handle_axis = handle_axis / np.linalg.norm(
-        handle_axis, axis=1, keepdims=True)
-    func_candidates = centers[
-        np.argsort(dist_farest)[1:]]
-    vect = farest_center - func_candidates
-    vect = vect / np.linalg.norm(
-        vect, axis=1, keepdims=True)
-    func_index = np.argsort(
-        np.abs(np.sum(
-            handle_axis * vect, axis=1)))[0]
-    func_point = np.expand_dims(
-        func_candidates[func_index], 0)
+    c = np.mean(centers, axis=0, keepdims=True)
 
-    kmeans = KMeans(
-        n_clusters=32,
-        random_state=0).fit(p)
-    centers_dense = kmeans.cluster_centers_
-    hull = ConvexHull(make_noisy(centers_dense[:, :2]))
-    hull = centers_dense[hull.vertices]
-    hull_index = np.argsort(
-            np.linalg.norm(func_point - hull, axis=1))[0]
-    func_point = hull[np.newaxis, hull_index]
+    xs, ys, zs = np.split(centers, [1, 2], axis=1)
+    ransac = linear_model.RANSACRegressor()
+    ransac.fit(xs, np.squeeze(ys))
 
-    keypoints = [grasping_point,
-                 func_point,
-                 collision_points]
+    centers_inlier = centers[ransac.inlier_mask_]
+    grasp_point = np.mean(centers_inlier, axis=0, keepdims=True)
 
-    return keypoints
+    func_point_push = np.mean(
+            centers[np.logical_not(ransac.inlier_mask_)],
+            axis=0, keepdims=True)
+
+    k = np.squeeze(ransac.estimator_.coef_)
+    func_vect_push = np.reshape(
+        [1/np.sqrt(1+np.square(k)),
+         k/np.sqrt(1+np.square(k)), 0], [1, 3])
+
+    v_cf = func_point_push - c
+    if np.dot(
+            np.squeeze(v_cf), 
+            np.squeeze(func_vect_push)) < 0:
+        func_vect_push = -func_vect_push
+
+    func_vect_reach = -func_vect_push
+    func_vect_hammer = func_vect_push.dot(
+            np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]]))
+
+
+
+
+    
+    grasp_point = grasp_point.astype(np.float32)
+    func_point = func_point.astype(np.float32)
+    func_vect = func_vect.astype(np.float32)
+    
+    return grasp_point, func_point, func_vect
+

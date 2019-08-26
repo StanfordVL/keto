@@ -72,12 +72,15 @@ class PullReward(reward_fn.RewardFn):
         else:
             self._update_history(success)
             success_rate = np.mean(self.history or [-1]) / 2.0
-            logger.debug('Push Success: %r, Success Rate %.3f',
+            logger.debug('Push Success: %r, Success Rate %.4f',
                          success, success_rate)
         return success, self.terminate_after_grasp
 
     def _check_cornercase(self):
         is_cnc = self.env.timeout or self.env.grasp_cornercase
+        if not self.env.is_training:
+            is_cnc = is_cnc or not self.env.simulator.check_contact(
+                self.env.robot.arm, self.graspable)
         return is_cnc
 
     def _update_history(self, success):

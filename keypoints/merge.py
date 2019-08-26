@@ -3,6 +3,8 @@ import argparse
 
 from cvae.build import build_grasp_inference_graph
 from cvae.build import build_keypoint_inference_graph
+from cvae.build import build_action_inference_graph
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model',
@@ -16,9 +18,11 @@ parser.add_argument('--grasp',
                     type=str)
 parser.add_argument('--keypoint',
                     type=str)
+parser.add_argument('--action',
+                    type=str)
 parser.add_argument('--num_funct_vect',
                     type=str,
-                    default='0')
+                    default='1')
 parser.add_argument('--output',
                     type=str,
                     default='./runs/cvae_model')
@@ -33,6 +37,12 @@ elif args.model == 'grasp_keypoint':
     build_grasp_inference_graph()
     build_keypoint_inference_graph(
             num_funct_vect=int(args.num_funct_vect))
+elif args.model == 'grasp_keypoint_action':
+    build_grasp_inference_graph()
+    build_keypoint_inference_graph(
+            num_funct_vect=int(args.num_funct_vect))
+    build_action_inference_graph()
+
 else:
     raise ValueError(args.model)
 
@@ -62,6 +72,22 @@ with tf.Session() as sess:
 
         saver_grasp.restore(sess, args.grasp)
         saver_keypoint.restore(sess, args.keypoint)
+        saver.save(sess, args.output)
+
+    elif args.model == 'grasp_keypoint_action':
+        vars_grasp = [var for var in vars if 'grasp' in var.name]
+        vars_keypoint = [var for var in vars if 'keypoint' in var.name]
+        vars_action = [var for var in vars if 'action' in var.name]
+
+        saver = tf.train.Saver(var_list=vars)
+        saver_grasp = tf.train.Saver(var_list=vars_grasp)
+        saver_keypoint = tf.train.Saver(var_list=vars_keypoint)
+        saver_action = tf.train.Saver(var_list=vars_action)
+
+        saver_grasp.restore(sess, args.grasp)
+        saver_keypoint.restore(sess, args.keypoint)
+        saver_action.restore(sess, args.action)
+
         saver.save(sess, args.output)
 
     else:

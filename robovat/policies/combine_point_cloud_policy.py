@@ -9,7 +9,7 @@ from tf_agents.policies import policy_step
 
 from robovat.policies import point_cloud_policy
 
-from robovat.math import reach_keypoints_heuristic
+from robovat.math import combine_keypoints_heuristic
 from robovat.math import solver_general
 
 from robovat.math import Pose, get_transform
@@ -75,24 +75,9 @@ class CombinePointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return mat
         
     def _keypoints_heuristic(self, point_cloud_tf):
-        point_cloud_tf = tf.Print(
-                point_cloud_tf, [], message='Using heuristic policy')
-
-        g_kp, f_kp, f_v = tf.py_func(reach_keypoints_heuristic,
+        g_kp, f_kp, f_v = tf.py_func(combine_keypoints_heuristic,
                                      [point_cloud_tf],
                                      [tf.float32, tf.float32, tf.float32])
-        return g_kp, f_kp, f_v
-
-    def _keypoints_network(self, point_cloud_tf, scale=20):
-        point_cloud_tf = tf.Print(
-                point_cloud_tf, [], message='Using network policy')
-        keypoints, f_v, _ = forward_keypoint(
-                point_cloud_tf * scale,
-                num_samples=256,
-                num_funct_vect=1)
-        g_kp, f_kp = keypoints
-        g_kp = g_kp / scale
-        f_kp = f_kp / scale
         return g_kp, f_kp, f_v
 
     def _action(self,
@@ -102,12 +87,7 @@ class CombinePointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 scale=20):
         point_cloud_tf = time_step.observation['point_cloud']
         
-        if self.is_training:
-            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 0.8,
-                    lambda: self._keypoints_heuristic(point_cloud_tf),
-                    lambda: self._keypoints_network(point_cloud_tf))
-        else:
-            g_kp, f_kp, f_v = self._keypoints_network(point_cloud_tf)
+        g_kp, f_kp, f_v = self._keypoints_heuristic(point_cloud_tf)
 
         keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
         keypoints = tf.expand_dims(keypoints, axis=0)
@@ -129,58 +109,7 @@ class CombinePointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         action_4dof = tf.concat([g_kp[:2], action_4dof[0, 2:]], axis=0)
         action_4dof = tf.expand_dims(action_4dof, axis=0)
 
-        v_fg = g_kp - f_kp
-        theta = tf.add(tf.atan2(f_v[1], f_v[0]),
-                       -tf.atan2(v_fg[1], v_fg[0]))
-
-        action_xy = tf.squeeze(action_4dof[:, :2])
-        v_af = -action_xy + f_kp[:2]
-        d = tf.linalg.norm(v_af)
-
-        start_rz = tf.atan2(y=v_af[1], x=v_af[0])
-
-        tx, ty, tz = self.target_pose.position
-
-        trz = self.target_pose.euler[2]
-        target = tf.constant([tx, ty], dtype=tf.float32)
-        force = tf.constant([np.cos(trz), np.sin(trz)],
-                            dtype=tf.float32)
-
-        g_xy, g_rz = tf.py_func(solver_general,
-                                [target, force * 0.01, theta, d],
-                                [tf.float32, tf.float32])
-
-        g_rz = g_rz - start_rz + action_4dof[0, 3]
-
-        target_force = tf.concat([
-            force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
-
-
-        pre_pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.25, tf.constant([0.4], dtype=tf.float32),
-            [g_rz]],
-            axis=0)
-
-        pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.25, tf.constant([0.20], dtype=tf.float32),
-            [g_rz]],
-            axis=0)
-
-        pre_target_pose = tf.concat([
-            g_xy - force * 0.12, tf.constant([0.18], dtype=tf.float32),
-            [g_rz]],
-            axis=0)
-
-        reach_distance = 0.0 if self.is_training else 0.1 * force
-
-        target_pose = tf.concat([
-            g_xy + reach_distance, tf.constant([0.18], dtype=tf.float32),
-            [g_rz]],
-            axis=0)
-
-        action_task = self._concat_actions(
-            [target_force, pre_pre_pre_target_pose, 
-                pre_pre_target_pose, pre_target_pose, target_pose])
+        action_task =  tf.zeros(shape=[1, 1, 3], dtype=tf.float32)
 
         action = {'grasp': action_4dof,
                   'task': action_task,

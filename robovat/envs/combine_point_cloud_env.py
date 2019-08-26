@@ -212,22 +212,14 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
     def execute_action(self, action):
 
         action_grasp = action['grasp']
-        action_task = action['task']
+        keypoints = action['keypoints']
         #
         # Grasping
         #
-        is_good_grasp = self._execute_action_grasping(action_grasp)
-
-        if not is_good_grasp:
-            if self.is_training:
-                return
-            else:
-                self.grasp_cornercase = True
-                return
+        self._execute_action_grasping(action_grasp)
         #
         # Combine
         #
-        self._execute_action_combine(action_task)
 
     def _execute_action_grasping(self, action):
         """Execute the grasp action.
@@ -320,7 +312,7 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
         good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.04)
         return good_loc
 
-    def _execute_action_combine(self, action):
+    def _execute_action_general(self, action):
         """Execute the combine action.
         """
         phase = 'initial'
@@ -340,9 +332,9 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                 if phase == 'overhead':
                     pass
 
-                elif phase == 'prestart':
+                elif phase == 'start':
                     num_move_steps = action.shape[0]
-                    for step in range(1, num_move_steps):
+                    for step in range(num_move_steps):
                         x, y, z, angle = action[step]
                         angle = (angle + np.pi) % (np.pi * 2) - np.pi
 
@@ -361,14 +353,6 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                             ready = self.is_phase_ready(
                                 phase, num_action_steps)
 
-                elif phase == 'start':
-                    pass
-
-                elif phase == 'end':
-                    pass
-
-                elif phase == 'postend':
-                    pass
 
     def _draw_path(self, action):
         plt.figure(figsize=(4, 3))

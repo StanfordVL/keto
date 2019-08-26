@@ -47,7 +47,7 @@ class ReachReward(reward_fn.RewardFn):
             target_pose = np.array(self.target.pose.position)
             hammer_depth = target_pose[1] - self.target_pose_init[1]
             success = 2 * int(hammer_depth > 0.01)
-            logger.debug('Target trans: %.3f', hammer_depth)
+            logger.debug('Target trans: %.4f', hammer_depth)
         else:
             raise NotImplementedError
 
@@ -57,12 +57,15 @@ class ReachReward(reward_fn.RewardFn):
         else:
             self._update_history(success)
             success_rate = np.mean(self.history or [-1]) / 2.0
-            logger.debug('Reach Success: %r, Success Rate %.3f',
+            logger.debug('Reach Success: %r, Success Rate %.4f',
                          success, success_rate)
         return success, self.terminate_after_grasp
 
     def _check_cornercase(self):
         is_cnc = self.env.timeout or self.env.grasp_cornercase
+        if not self.env.is_training:
+            is_cnc = is_cnc or not self.env.simulator.check_contact(
+                self.env.robot.arm, self.graspable)
         return is_cnc
 
     def _update_history(self, success):

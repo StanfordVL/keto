@@ -249,6 +249,80 @@ class KeypointReader(object):
         return neg_p, neg_k
 
 
+class ActionReader(object):
+
+    def __init__(self, 
+                 data_path, 
+                 trainval_ratio=0.8):
+        logging.info('Loading {}'.format(data_path))
+        f = h5py.File(data_path, 'r')
+        self.pos_p = f['pos_point_cloud']
+        self.pos_a = f['pos_action']
+        self.neg_p = f['neg_point_cloud']
+        self.neg_a = f['neg_action']
+
+        self.trainval_ratio = trainval_ratio
+        print('Number positive: {}'.format(
+            self.pos_p.shape[0]))
+        return
+
+    def make_suitable(self, indices):
+        indices = sorted(set(list(indices)))
+        return indices
+
+    def sample_pos_train(self, size):
+        indices = np.random.randint(
+            low=0,
+            high=int(self.pos_p.shape[0]
+                     * self.trainval_ratio),
+            size=size)
+        indices = self.make_suitable(indices)
+        pos_p = np.array(self.pos_p[indices],
+                         dtype=np.float32)
+        pos_a = np.array(self.pos_a[indices],
+                         dtype=np.float32)
+        return pos_p, pos_a
+
+    def sample_neg_train(self, size):
+        indices = np.random.randint(
+            low=0,
+            high=int(self.neg_p.shape[0]
+                     * self.trainval_ratio),
+            size=size)
+        indices = self.make_suitable(indices)
+        neg_p = np.array(self.neg_p[indices],
+                         dtype=np.float32)
+        neg_a = np.array(self.neg_a[indices],
+                         dtype=np.float32)
+        return neg_p, neg_a
+
+    def sample_pos_val(self, size):
+        indices = np.random.randint(
+            high=self.pos_p.shape[0],
+            low=int(self.pos_p.shape[0]
+                    * self.trainval_ratio),
+            size=size)
+        indices = self.make_suitable(indices)
+        pos_p = np.array(self.pos_p[indices],
+                         dtype=np.float32)
+        pos_a = np.array(self.pos_a[indices],
+                         dtype=np.float32)
+        return pos_p, pos_a
+
+    def sample_neg_val(self, size):
+        indices = np.random.randint(
+            high=self.neg_p.shape[0],
+            low=int(self.neg_p.shape[0]
+                    * self.trainval_ratio),
+            size=size)
+        indices = self.make_suitable(indices)
+        neg_p = np.array(self.neg_p[indices],
+                         dtype=np.float32)
+        neg_a = np.array(self.neg_a[indices],
+                         dtype=np.float32)
+        return neg_p, neg_a
+
+
 class MultitaskReader(object):
 
     def __init__(self, data_path, trainval_ratio=0.8):

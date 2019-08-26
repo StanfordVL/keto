@@ -273,7 +273,9 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     pre_grasp_pose = np.array(self.graspable.pose.position)
                     pre_grasp_euler = self.graspable.pose.euler
 
-                    self.robot.move_to_gripper_pose(start, straight_line=True)
+                    self.robot.move_to_gripper_pose(
+                            start, 
+                            straight_line=True, speed=1.2)
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
@@ -295,7 +297,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     postend.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
                     self.robot.move_to_gripper_pose(
                         postend,
-                        straight_line=True, speed=0.3)
+                        straight_line=True, speed=1.2)
                     post_grasp_euler = self.graspable.pose.euler
 
                     # Prevent problems caused by unrealistic frictions.
@@ -343,6 +345,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                                 self.graspable.pose.matrix3, 
                                 np.array([0, 0, 1]))[-1]
                         if abs(error_orien) > 0.4:
+                            if self.is_training:
+                                self.grasp_cornercase = True
                             return
                         if self._robot_should_stop():
                             return

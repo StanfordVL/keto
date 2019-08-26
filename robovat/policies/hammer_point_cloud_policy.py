@@ -8,7 +8,6 @@ import tensorflow as tf
 from tf_agents.policies import policy_step
 from robovat.policies import point_cloud_policy
 
-from robovat.math import search_keypoints
 from robovat.math import hammer_keypoints_heuristic
 from robovat.math import solver_hammering
 
@@ -96,7 +95,8 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 point_cloud_tf, [], message='Using network policy')
         keypoints, f_v, _ = forward_keypoint(
                 point_cloud_tf * scale,
-                num_funct_vect=1)
+                num_funct_vect=1,
+                funct_on_hull=True)
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale

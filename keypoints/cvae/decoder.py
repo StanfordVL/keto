@@ -124,3 +124,35 @@ class KeypointDecoder(Network):
             keypoints = [tf.squeeze(k, 2) for k in keypoints]
         return keypoints, funct_vect
 
+
+class ActionDecoder(Network):
+
+    def build_model(self, x, g):
+        with tf.variable_scope('action_decoder',
+                               reuse=tf.AUTO_REUSE):
+
+            x = x - g
+            p = x
+
+            x = self.conv_layer(x, 16, name='conv1_1')
+            x = self.conv_layer(x, 16, name='conv1_2')
+
+            x = self.conv_layer(x, 32, name='conv2_1')
+            x = self.conv_layer(x, 32, name='conv2_2')
+
+            x = self.conv_layer(x, 64, name='conv3_1')
+            x = self.conv_layer(x, 256, name='conv3_2')
+            x, p = self.down_sample(x, p, 64, 0.7, 'down_sample')
+
+            x_a = self.conv_layer(x, 256, name='conv6_1')
+            x_a = tf.reduce_max(x_a, axis=1, keepdims=True)
+            grasp_xy = self.conv_layer(x_a, 2, name='conv6_2',
+                                       linear=True)
+            grasp_rz = self.conv_layer(x_a, 2, name='conv6_3',
+                                       linear=True)
+
+            grasp_xy = tf.squeeze(grasp_xy, axis=[1, 2])
+            grasp_rz = tf.squeeze(grasp_rz, axis=[1, 2])
+
+        return grasp_xy, grasp_rz
+

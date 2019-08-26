@@ -7,9 +7,9 @@ import os
 from scipy.spatial import ConvexHull
 from sklearn.cluster import KMeans
 
-from cvae.reader import GraspReader, KeypointReader
+from cvae.reader import GraspReader, KeypointReader, ActionReader
 from cvae.encoder import GraspEncoder, KeypointEncoder
-from cvae.decoder import GraspDecoder, KeypointDecoder
+from cvae.decoder import GraspDecoder, KeypointDecoder, ActionDecoder
 from cvae.discriminator import GraspDiscriminator, KeypointDiscriminator
 
 import matplotlib as mpl
@@ -135,8 +135,9 @@ def visualize_keypoints(point_cloud,
 def rectify_keypoints(point_cloud,
                       grasp_point,
                       funct_point,
+                      funct_on_hull,
                       grasp_clusters=12,
-                      funct_clusters=32):
+                      funct_clusters=12):
 
     p = np.squeeze(point_cloud)
     kmeans = KMeans(
@@ -151,7 +152,13 @@ def rectify_keypoints(point_cloud,
         n_clusters=funct_clusters,
         random_state=0).fit(p)
     centers = kmeans.cluster_centers_
-    hull = centers
+
+    if funct_on_hull:
+        hull = ConvexHull(centers[:, :2])
+        hull = centers[hull.vertices]
+    else:
+        hull = centers
+
     hull_index = np.argsort(
         np.linalg.norm(funct_point - hull, axis=1))[0]
     funct_point = hull[np.newaxis, hull_index].astype(np.float32)
@@ -444,6 +451,43 @@ def build_keypoint_training_graph(num_points=1024,
     return training_graph
 
 
+def build_action_training_graph(num_points=1024):
+
+    point_cloud_tf = tf.placeholder(dtype=tf.float32,
+                                    shape=[None, num_points, 3])
+    grasp_point_tf = tf.placeholder(dtype=tf.float32,
+                                    shape=[None, 3])
+    grasp_xy_tf = tf.placeholder(dtype=tf.float32,
+                                 shape=[None, 2])
+    grasp_rz_tf = tf.placeholder(dtype=tf.float32,
+                                 shape=[None, 2])
+
+    [grasp_xy_pred, grasp_rz_pred] = ActionDecoder().build_model(
+        tf.reshape(point_cloud_tf, (-1, num_points, 1, 3)),
+        tf.reshape(grasp_point_tf, (-1, 1, 1, 3)))
+
+    loss_grasp_xy = tf.reduce_mean(
+        tf.abs(grasp_xy_pred - grasp_xy_tf), axis=1)
+
+    loss_grasp_rz = tf.reduce_mean(
+        tf.abs(grasp_rz_pred - grasp_rz_tf), axis=1)
+
+    loss_sum = loss_grasp_xy + loss_grasp_rz
+    loss_mean = tf.reduce_mean(loss_sum)
+    loss_mask = tf.less(loss_sum, loss_mean * 0.5)
+
+    loss_grasp_xy = tf.reduce_mean(tf.boolean_mask(loss_grasp_xy, loss_mask))
+    loss_grasp_rz = tf.reduce_mean(tf.boolean_mask(loss_grasp_rz, loss_mask))
+
+    training_graph = {'point_cloud_tf': point_cloud_tf,
+                      'grasp_point_tf': grasp_point_tf,
+                      'grasp_xy_tf': grasp_xy_tf,
+                      'grasp_rz_tf': grasp_rz_tf,
+                      'loss_grasp_xy': loss_grasp_xy,
+                      'loss_grasp_rz': loss_grasp_rz}
+    return training_graph
+
+
 def get_learning_rate(step, steps, init=5e-4):
     return init if step < steps * 0.8 else init * 0.1
 
@@ -505,6 +549,21 @@ def build_keypoint_inference_graph(num_points=1024,
                        'funct_vect': funct_vect_vae,
                        'score': score,
                        'dist': dist}
+    return inference_graph
+
+
+def build_action_inference_graph(num_points=1024):
+    point_cloud_tf = tf.placeholder(tf.float32,
+                                    [None, num_points, 3])
+    grasp_keypoint = tf.placeholder(tf.float32,
+                                    [None, 3])
+    grasp_xy, grasp_rz = ActionDecoder().build_model(
+            tf.reshape(point_cloud_tf, [-1, num_points, 1, 3]),
+            tf.reshape(grasp_keypoint, [-1, 1, 1, 3]))
+    inference_graph = {'point_cloud_tf': point_cloud_tf,
+                       'grasp_keypoint': grasp_keypoint,
+                       'grasp_xy': grasp_xy,
+                       'grasp_rz': grasp_rz}
     return inference_graph
 
 
@@ -585,7 +644,8 @@ def forward_keypoint(point_cloud_tf,
                      num_points=1024,
                      num_samples=256,
                      dist_thres=0.2,
-                     num_funct_vect=0):
+                     num_funct_vect=0,
+                     funct_on_hull=True):
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -654,11 +714,23 @@ def forward_keypoint(point_cloud_tf,
 
     [grasp_point, funct_point
      ] = tf.py_func(rectify_keypoints,
-                    [point_cloud_tf, grasp_point, funct_point],
+                    [point_cloud_tf, grasp_point, funct_point, funct_on_hull],
                     [tf.float32, tf.float32])
     top_keypoints = [grasp_point, funct_point]
 
     return top_keypoints, top_funct_vect, top_score
+
+
+def forward_action(point_cloud_tf,
+                   grasp_keypoint,
+                   num_points=1024):
+    point_cloud_tf = tf.reshape(point_cloud_tf,
+                                [1, num_points, 1, 3])
+    grasp_keypoint = tf.reshape(grasp_keypoint,
+                                [1, 1, 1, 3])
+    grasp_xy, grasp_rz = ActionDecoder().build_model(
+            point_cloud_tf, grasp_keypoint)
+    return grasp_xy, grasp_rz
 
 
 def train_vae_grasp(data_path,
@@ -1004,7 +1076,7 @@ def train_gcnn_grasp(data_path,
                 running_log.write(
                     'gcnn', 'Validation acc: {:.2f}, prec: {:.2f}'.format(
                         acc_np * 100, prec_np * 100))
-                """
+                
                 for index in range(pos_p_np.shape[0]):
                     visualize(pos_p_np[index],
                               pos_g_np[np.newaxis, index],
@@ -1015,7 +1087,7 @@ def train_gcnn_grasp(data_path,
                               './runs/gcnn/plot',
                               str(step).zfill(6) + '_' +
                               str(index).zfill(3) + '_aligned')
-                """
+
 
 def load_samples(loader, batch_size, stage, noise_level=0.2):
     if stage == 'train':
@@ -1098,7 +1170,7 @@ def train_discr_keypoint(data_path,
     with tf.Session(config=config) as sess:
         sess.run([tf.global_variables_initializer()])
         if model_path:
-            running_log.write('discr',
+            running_log.write('discr_{}'.format(task_name),
                               'loading model from {}'.format(model_path))
             saver.restore(sess, model_path)
 
@@ -1132,7 +1204,7 @@ def train_discr_keypoint(data_path,
             if step > 0 and step % eval_step == 0:
                 for noise_level in [0.1, 0.2, 0.4, 0.8]:
                     [p_np, grasp_np, funct_np, 
-                            funct_vect_np, label_np] = load_samples(
+                        funct_vect_np, label_np] = load_samples(
                         loader, batch_size, 'train', noise_level)
                     feed_dict = {point_cloud_tf: p_np,
                                  grasp_point_tf: grasp_np,
@@ -1145,6 +1217,95 @@ def train_discr_keypoint(data_path,
                     running_log.write('discr_{}'.format(task_name),
                                       'noise: {:.3f}, acc: {:.3f}'.format(
                                           noise_level, acc_np * 100))
+
+
+def train_decoder_action(data_path,
+                         steps=120000,
+                         batch_size=128,
+                         eval_size=128,
+                         l2_weight=1e-6,
+                         log_step=20,
+                         eval_step=4000,
+                         save_step=4000,
+                         model_path=None,
+                         task_name='task',
+                         optimizer='Adam'):
+    loader = ActionReader(data_path)
+
+    graph = build_action_training_graph()
+    learning_rate = tf.placeholder(tf.float32, shape=())
+
+    point_cloud_tf = graph['point_cloud_tf']
+    grasp_point_tf = graph['grasp_point_tf']
+    grasp_xy_tf = graph['grasp_xy_tf']
+    grasp_rz_tf = graph['grasp_rz_tf']
+
+    loss_grasp_xy = graph['loss_grasp_xy']
+    loss_grasp_rz = graph['loss_grasp_rz']
+
+    weight_loss = [tf.nn.l2_loss(var) for var
+                   in tf.trainable_variables()]
+    weight_loss = tf.reduce_sum(weight_loss) * l2_weight
+
+    loss = weight_loss + loss_grasp_xy + loss_grasp_rz
+
+    if optimizer == 'Adam':
+        train_op = tf.train.AdamOptimizer(
+            learning_rate=learning_rate).minimize(loss)
+    elif optimizer == 'SGDM':
+        train_op = tf.train.MomentumOptimizer(
+            learning_rate=learning_rate,
+            momentum=0.9).minimize(loss)
+    else:
+        raise NotImplementedError
+
+    all_vars = tf.get_collection_ref(
+        tf.GraphKeys.GLOBAL_VARIABLES)
+    var_list_vae = [var for var in all_vars
+                    if 'action_decoder' in var.name and
+                       'Momentum' not in var.name and
+                       'Adam' not in var.name]
+
+    saver = tf.train.Saver(var_list=var_list_vae)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+
+    with tf.Session(config=config) as sess:
+        sess.run([tf.global_variables_initializer()])
+        if model_path:
+            running_log.write('action_{}'.format(task_name),
+                              'loading model from {}'.format(model_path))
+            saver.restore(sess, model_path)
+
+        for step in range(steps + 1):
+            pos_p_np, pos_a_np = loader.sample_pos_train(batch_size) 
+            pos_g_np, pos_g_xy_np, pos_g_rz_np = np.split(
+                    pos_a_np, [3, 5], axis=1)
+            pos_g_rz_np = np.concatenate(
+                    [np.cos(pos_g_rz_np), np.sin(pos_g_rz_np)], axis=1)
+            feed_dict = {point_cloud_tf: pos_p_np,
+                         grasp_point_tf: pos_g_np,
+                         grasp_xy_tf: pos_g_xy_np,
+                         grasp_rz_tf: pos_g_rz_np,
+                         learning_rate: get_learning_rate(step, steps)}
+
+            [_, loss_np, loss_g_xy_np, loss_g_rz_np
+             ] = sess.run([
+                 train_op, loss, loss_grasp_xy, loss_grasp_rz],
+                feed_dict=feed_dict)
+
+            if step % log_step == 0:
+                running_log.write('action_{}'.format(task_name),
+                                  'step: {}/{}, '.format(step, steps) +
+                                  'loss: {:.3f}, '.format(loss_np) + 
+                                  'xy: {:.3f}, rz: {:.3f}'.format(
+                                      loss_g_xy_np, loss_g_rz_np))
+
+            if step > 0 and step % save_step == 0:
+                saver.save(sess,
+                           './runs/action/action_{}_{}'.format(
+                               task_name, str(step).zfill(6)))
 
 
 def inference_grasp(data_path,
