@@ -6,5 +6,6 @@ from .hammer_action_policy import HammerActionPolicy
 from .push_point_cloud_policy import PushPointCloudPolicy
 from .push_action_policy import PushActionPolicy
 from .reach_point_cloud_policy import ReachPointCloudPolicy
+from .reach_action_policy import ReachActionPolicy
 from .pull_point_cloud_policy import PullPointCloudPolicy
 from .combine_point_cloud_policy import CombinePointCloudPolicy

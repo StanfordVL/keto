@@ -93,10 +93,11 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
     def _keypoints_network(self, point_cloud_tf, scale=20):
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using network policy')
-        keypoints, f_v, _ = forward_keypoint(
+        keypoints, f_v, score = forward_keypoint(
                 point_cloud_tf * scale,
                 num_funct_vect=1,
                 funct_on_hull=True)
+        f_v = tf.Print(f_v, [score], message='Keypoint score ')
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
@@ -121,6 +122,8 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
 
         action, score = forward_grasp(
             point_cloud_tf * scale, g_kp * scale)
+
+        action = tf.Print(action, [score], message='Grasp score ')
 
         action = tf.expand_dims(action, 0)
         xyz, rx, ry, rz = tf.split(action,

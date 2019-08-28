@@ -31,7 +31,7 @@ def solver_quadratic(target, force, theta, d):
 
 def solver_hammering(target, force, theta, d, u):
     g_xy, g_rz = solver_quadratic(target, force, theta, d)
-    g_drz = u / d
+    g_drz = u / (1e-4 + d)
     g_drz = np.reshape(g_drz.astype(np.float32), ())
     return g_xy, g_rz, g_drz
 

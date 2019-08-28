@@ -171,7 +171,7 @@ def main():
     if args.use_simulator:
         simulator = Simulator(worker_id=args.worker_id,
                               use_visualizer=bool(args.debug))
-        time.sleep(10)  # TODO: Uncomment this if Segmentation Fault appears.
+        #time.sleep(10)  # TODO: Uncomment this if Segmentation Fault appears.
     else:
         simulator = None
 

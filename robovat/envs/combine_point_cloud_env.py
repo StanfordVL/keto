@@ -211,37 +211,88 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
 
     def execute_action(self, action):
 
-        action_grasp = action['grasp']
         keypoints = action['keypoints']
-        #
+        grasp_point, func_point, func_vect = np.split(
+                keypoints, [1, 4], axis=0)
+
         # Grasping
-        #
+        action_grasp = np.append(
+                grasp_point[0],
+                np.arctan2(func_vect[0, 1], func_vect[0, 0]))
         self._execute_action_grasping(action_grasp)
-        #
-        # Combine
-        #
+
+        # Pushing
+        d = np.linalg.norm(grasp_point - func_point[0])
+        obstacle = np.array(self.obstacles[0].pose.position).flatten()
+        action_push = np.array([
+            [obstacle[0] - d * 1.73, obstacle[1] - 0.03, 0.40, 0],
+            [obstacle[0] - d * 1.73, obstacle[1] - 0.03, 0.20, 0],
+            [obstacle[0] - d * 0.30, obstacle[1] - 0.03, 0.20, 0],
+            [obstacle[0] - 0.10, obstacle[1] - 0.30, 0.40, 0]])
+        if not self._execute_action_general(action_push, self.graspable):
+            return
+
+        # Reaching
+        d = np.linalg.norm(grasp_point - func_point[1])
+        target = np.array(self.target.pose.position).flatten()
+    
+        action_reach = np.array([
+            [target[0], target[1] - d * 1.8, 0.40, -np.pi/2],
+            [target[0], target[1] - d * 1.8, 0.20, -np.pi/2],
+            [target[0], target[1] - d * 1.0, 0.20, -np.pi/2],
+            [target[0], target[1] - d * 1.8, 0.20, -np.pi/2],
+            [target[0], target[1] - d * 1.8, 0.40, -np.pi/2]])
+        if not self._execute_action_general(action_reach, self.graspable):
+            return
+        self.simulator.wait_until_stable(self.target)
+
+        # Putting down
+        self._execute_action_putting_down(action_grasp)
+
+        # Inserting
+        target_pose = np.append(
+                np.array(self.target.pose.position),
+                self.target.pose.euler[2])
+        self._execute_action_grasping(target_pose)
+        slot_x, slot_y, _ = self.slot.pose.position
+        action_insert = np.array([
+            [slot_x, slot_y - 0.30, 0.40, np.pi/2],
+            [slot_x, slot_y - 0.10, 0.40, np.pi/2]])
+        self._execute_action_general(action_insert, self.target)
+        self.robot.grip(0)
+        action_back = np.array([
+            [slot_x, slot_y - 0.10, 0.45, np.pi/2],
+            [slot_x, slot_y - 0.30, 0.45, np.pi/2]])
+        if not self._execute_action_general(action_back):
+            return
+
+        # Regrasp
+        self._execute_action_grasping(action_grasp)
+
+        # Hammering
+        self.simulator.wait_until_stable(self.target)
+        d_g_push_f = np.linalg.norm(grasp_point - func_point[0])
+        d_push_f_hammer_f = np.linalg.norm(func_point[0] - func_point[2])
+        target_pose = np.array(self.target.pose.position).flatten()
+
+        hammer_pose = np.array([target_pose[0] - d_g_push_f, 
+                                target_pose[1] - d_push_f_hammer_f - 0.08,
+                                0.39, -np.pi/6])
+        action_hammer = np.array([
+            hammer_pose - np.array([0.0, 0.2, 0.0, 0.0]),
+            hammer_pose])
+        if not self._execute_action_general(action_hammer):
+            return
+        self._execute_action_hammering()
 
     def _execute_action_grasping(self, action):
-        """Execute the grasp action.
 
-        Args:
-            action: A 4-DoF grasp defined in the image space or the 3D space.
-        """
-        if self.config.ACTION.TYPE == 'CUBOID':
-            x, y, z, angle = action
-        elif self.config.ACTION.TYPE == 'IMAGE':
-            grasp = Grasp2D.from_vector(action, camera=self.camera)
-            x, y, z, angle = grasp.as_4dof()
-        else:
-            raise ValueError(
-                'Unrecognized action type: %r' % (self.config.ACTION.TYPE))
-
+        x, y, z, angle = action
         start = Pose(
             [[x, y, z - self.config.SIM.Z_OFFSET], [0, np.pi, angle]])
 
         phase = 'initial'
 
-        # Handle the simulation robustness.
         if self.simulator:
             num_action_steps = 0
 
@@ -258,7 +309,6 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                 if phase == 'overhead':
                     self.robot.move_to_joint_positions(
                         self.config.ARM.OVERHEAD_POSITIONS)
-                    # self.robot.grip(0)
 
                 elif phase == 'prestart':
                     prestart = start.copy()
@@ -282,7 +332,76 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
 
                 elif phase == 'end':
                     self.robot.grip(1)
-                    post_grasp_pose = np.array(self.graspable.pose.position)
+                    if self.simulator:
+                        self.robot.l_finger_tip.set_dynamics(
+                            lateral_friction=10,
+                            rolling_friction=10,
+                            spinning_friction=50)
+                        self.robot.r_finger_tip.set_dynamics(
+                            lateral_friction=10,
+                            rolling_friction=10,
+                            spinning_friction=50)
+                        self.table.set_dynamics(
+                            lateral_friction=0.8)
+
+                elif phase == 'postend':
+                    postend = self.robot.end_effector.pose
+                    postend.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
+                    self.robot.move_to_gripper_pose(
+                        postend,
+                        straight_line=True, speed=0.1)
+
+                    self.simulator.wait_until_stable(self.graspable)
+                    self.simulator.wait_until_stable(self.target)
+        self.grasp_success = self.simulator.check_contact(
+                        self.robot.arm,
+                        self.graspable)
+        return
+
+    def _execute_action_putting_down(self, action):
+
+        x, y, z, angle = action
+        start = Pose(
+            [[x, y, z - self.config.SIM.Z_OFFSET], [0, np.pi, angle]])
+
+        phase = 'initial'
+
+        if self.simulator:
+            num_action_steps = 0
+
+        while(phase != 'done'):
+            if self.simulator:
+                self.simulator.step()
+                if phase == 'start':
+                    num_action_steps += 1
+
+            if self.is_phase_ready(phase, num_action_steps):
+                phase = self.get_next_phase(phase)
+
+                if phase == 'overhead':
+                    self.robot.move_to_joint_positions(
+                        self.config.ARM.OVERHEAD_POSITIONS)
+
+                elif phase == 'prestart':
+                    prestart = start.copy()
+                    prestart.z = self.config.ARM.GRIPPER_SAFE_HEIGHT
+                    self.robot.move_to_gripper_pose(prestart)
+
+                elif phase == 'start':
+                    self.robot.move_to_gripper_pose(
+                            start, straight_line=True, speed=1.2)
+                    pre_grasp_pose = np.array(self.graspable.pose.position)
+
+                elif phase == 'end':
+                    if self.simulator:
+                        self.robot.l_finger_tip.set_dynamics(
+                            lateral_friction=0.001,
+                            spinning_friction=0.001)
+                        self.robot.r_finger_tip.set_dynamics(
+                            lateral_friction=0.001,
+                            spinning_friction=0.001)
+
+                    self.robot.grip(0)
 
                 elif phase == 'postend':
                     postend = self.robot.end_effector.pose
@@ -290,29 +409,30 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                     self.robot.move_to_gripper_pose(
                         postend,
                         straight_line=True, speed=0.7)
+        return
 
-                    # Prevent problems caused by unrealistic frictions.
-                    if self.simulator:
-                        self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
-                        self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
-                        self.table.set_dynamics(
-                            lateral_friction=1)
+    def _execute_action_hammering(self, drz=np.pi/3):
+        wrist_joint_angle = self.robot.joint_positions['right_j6']
+        positions = {'right_j6': wrist_joint_angle - drz}
+        self.robot.move_to_joint_positions(positions, speed=10.0,
+                                           timeout=2)
 
-                    self.simulator.wait_until_stable(self.graspable)
-                    self.grasp_success = self.simulator.check_contact(
-                        self.robot.arm,
-                        self.graspable)
+        self._wait_until_ready('start', 1)
+        positions = {'right_j6': wrist_joint_angle + drz}
+        self.robot.move_to_joint_positions(positions, speed=10.0,
+                                           timeout=2)
 
-        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.04)
-        return good_loc
+        self._wait_until_ready('start', 1)
+        positions = {'right_j6': wrist_joint_angle - drz}
+        self.robot.move_to_joint_positions(positions, speed=10.0,
+                                           timeout=2)
 
-    def _execute_action_general(self, action):
+        self._wait_until_ready('start', 1)
+        positions = {'right_j6': wrist_joint_angle + drz}
+        self.robot.move_to_joint_positions(positions, speed=10.0,
+                                           timeout=2)
+
+    def _execute_action_general(self, action, arm_contact=None):
         """Execute the combine action.
         """
         phase = 'initial'
@@ -325,9 +445,14 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                 if phase == 'start':
                     num_action_steps += 1
 
+            if arm_contact != None:
+                if not self.simulator.check_contact(self.robot.arm,
+                                    arm_contact):
+                    logger.debug('Task failed')
+                    return False
+
             if self.is_phase_ready(phase, num_action_steps):
                 phase = self.get_next_phase(phase)
-                logger.debug('task phase: %s', phase)
 
                 if phase == 'overhead':
                     pass
@@ -335,6 +460,7 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                 elif phase == 'start':
                     num_move_steps = action.shape[0]
                     for step in range(num_move_steps):
+                
                         x, y, z, angle = action[step]
                         angle = (angle + np.pi) % (np.pi * 2) - np.pi
 
@@ -345,13 +471,14 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
-                            speed=1.2)
+                            speed=0.7)
                         ready = False
                         while(not ready):
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(
                                 phase, num_action_steps)
+        return True
 
 
     def _draw_path(self, action):
@@ -427,6 +554,10 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                 if self.simulator.check_contact(self.robot.arm, self.table):
                     logger.debug('The gripper contacts the table')
                     return True
+                if self.simulator.check_contact(self.robot.arm, self.floor):
+                    logger.debug('The gripper contacts the floor')
+                    return True
+
 
         if self.robot.is_limb_ready() and self.robot.is_gripper_ready():
             return True

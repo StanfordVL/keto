@@ -6,5 +6,4 @@ python tools/run_env.py \
   --policy_config configs/policies/combine_point_cloud_policy.yaml \
   --problem CombinePointCloudProblem \
   --episodic 0 --num_episodes 4096 --debug 1 \
-  --output episodes/combine_point_cloud \
-  --checkpoint keypoints/keypoint_models/cvae_reach
+  --output episodes/combine_point_cloud

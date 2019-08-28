@@ -448,7 +448,7 @@ class CombineArmEnv(ArmEnv):
     """The environment of combine."""
 
     TARGET_REGION = {
-            'x': 0.20,
+            'x': 0.25,
             'y': 0.10,
             'z': 0.10,
             'roll': 0,
@@ -456,14 +456,14 @@ class CombineArmEnv(ArmEnv):
             'yaw': np.pi/2}
 
     WALL_REGION = [{
-            'x': 0.15,
+            'x': 0.20,
             'y': 0.10,
             'z': 0.05,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2},
             {
-            'x': 0.25,
+            'x': 0.30,
             'y': 0.10,
             'z': 0.05,
             'roll': 0,
@@ -471,15 +471,23 @@ class CombineArmEnv(ArmEnv):
             'yaw': np.pi/2}]
 
     CEIL_REGION = {
-            'x': 0.20,
+            'x': 0.25,
             'y': 0.10,
-            'z': 0.15,
+            'z': 0.13,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}
+
+    FLOOR_REGION = {
+            'x': 0.25,
+            'y': 0.25,
+            'z': 0.03,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2}
 
     OBSTACLE_REGION = [{
-            'x': 0.20,
+            'x': 0.25,
             'y': -0.05,
             'z': 0.1,
             'roll': 0,
@@ -487,9 +495,9 @@ class CombineArmEnv(ArmEnv):
             'yaw': 0}]
 
     SLOT_REGION = {
-            'x': 0.20,
-            'y': 0.40,
-            'z': 0.15,
+            'x': 0.25,
+            'y': 0.43,
+            'z': 0.16,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2}
@@ -556,6 +564,14 @@ class CombineArmEnv(ArmEnv):
                     ceil_pose, 
                     is_static=True,
                     name='ceil')
+
+            pose = Pose.uniform(**self.FLOOR_REGION)
+            floor_pose = get_transform(source=self.table_pose).transform(pose)
+            self.floor = self.simulator.add_body(
+                    self.config.SIM.FLOOR_PATH, 
+                    floor_pose, 
+                    is_static=True,
+                    name='floor')
 
             self.obstacles = []
             for iregion, region in enumerate(self.OBSTACLE_REGION):

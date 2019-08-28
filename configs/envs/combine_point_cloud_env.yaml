@@ -34,7 +34,7 @@ SIM:
     POSE: [[0, 0, -0.9], [0, 0, 0]]
 
   TABLE:
-    PATH: 'data/sim/tables/table_grasp.urdf'
+    PATH: 'data/sim/tables/table.urdf'
     POSE: [[0.6, 0, 0], [0, 0, 0]]
 
   GRASPABLE:
@@ -59,6 +59,7 @@ SIM:
   TARGET_PATH: 'data/sim/envs/tool_combine/cube.urdf'
   WALL_PATH: 'data/sim/envs/tool_combine/wall.urdf'
   CEIL_PATH: 'data/sim/envs/tool_combine/ceil.urdf'
+  FLOOR_PATH: 'data/sim/envs/tool_combine/floor.urdf'
   OBSTACLE_PATH: 'data/sim/envs/tool_combine/cylinder.urdf'
   SLOT_PATH: 'data/sim/envs/tool_combine/slot_hard.urdf'
 

@@ -210,7 +210,7 @@ def pull_keypoints_heuristic(point_cloud,
 
 
 def combine_keypoints_heuristic(point_cloud,
-                              n_clusters=12):
+                                n_clusters=16):
     p = np.squeeze(point_cloud)
     kmeans = KMeans(
         n_clusters=n_clusters,
@@ -244,13 +244,27 @@ def combine_keypoints_heuristic(point_cloud,
     func_vect_hammer = func_vect_push.dot(
             np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]]))
 
+    vect_grasp_to_centers = (centers - grasp_point) * np.array([1, 1, 0])
+    product_reach = np.sum(
+            func_vect_reach * vect_grasp_to_centers, axis=1)
+    func_point_reach = centers[np.argmax(product_reach)]
 
+    product_hammer = np.sum(
+            func_vect_hammer * vect_grasp_to_centers, axis=1)
+    func_point_hammer = centers[np.argmax(product_hammer)]
 
+    grasp_point = np.reshape(grasp_point, [1, 3]).astype(np.float32)
+    func_point = np.concatenate(
+            [np.reshape(func_point_push, [1, 3]),
+             np.reshape(func_point_reach, [1, 3]),
+             np.reshape(func_point_hammer, [1, 3])], 
+            axis=0).astype(np.float32)
 
-    
-    grasp_point = grasp_point.astype(np.float32)
-    func_point = func_point.astype(np.float32)
-    func_vect = func_vect.astype(np.float32)
-    
+    func_vect = np.concatenate(
+            [np.reshape(func_vect_push, [1, 3]),
+             np.reshape(func_vect_reach, [1, 3]),
+             np.reshape(func_vect_hammer, [1, 3])], 
+            axis=0).astype(np.float32)
+
     return grasp_point, func_point, func_vect
 

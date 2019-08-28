@@ -64,9 +64,9 @@ class HammerReward(reward_fn.RewardFn):
 
     def _check_cornercase(self):
         is_cnc = self.env.timeout or self.env.grasp_cornercase
-        if not self.env.is_training:
-            is_cnc = is_cnc or not self.env.simulator.check_contact(
-                self.env.robot.arm, self.graspable)
+        #if not self.env.is_training:
+        #    is_cnc = is_cnc or not self.env.simulator.check_contact(
+        #        self.env.robot.arm, self.graspable)
         return is_cnc
 
     def _update_history(self, success):

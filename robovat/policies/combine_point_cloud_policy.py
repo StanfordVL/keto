@@ -74,42 +74,22 @@ class CombinePointCloudPolicy(point_cloud_policy.PointCloudPolicy):
              [zero, zero, one]], [3, 3])
         return mat
         
-    def _keypoints_heuristic(self, point_cloud_tf):
-        g_kp, f_kp, f_v = tf.py_func(combine_keypoints_heuristic,
-                                     [point_cloud_tf],
-                                     [tf.float32, tf.float32, tf.float32])
-        return g_kp, f_kp, f_v
-
     def _action(self,
                 time_step,
                 policy_state,
                 seed, 
                 scale=20):
-        point_cloud_tf = time_step.observation['point_cloud']
-        
-        g_kp, f_kp, f_v = self._keypoints_heuristic(point_cloud_tf)
 
-        keypoints = tf.concat([g_kp, f_kp, f_v], axis=0)
+        point_cloud = time_step.observation['point_cloud']
+        grasp_point, func_point, func_vect = tf.py_func(
+                combine_keypoints_heuristic,
+                [point_cloud], [tf.float32, tf.float32, tf.float32])
+
+        keypoints = tf.concat([grasp_point, func_point, func_vect], axis=0)
         keypoints = tf.expand_dims(keypoints, axis=0)
 
-        action, score = forward_grasp(
-            point_cloud_tf * scale, 
-            g_kp * scale,
-            num_samples=128)
-
-        action = tf.expand_dims(action, 0)
-        xyz, rx, ry, rz = tf.split(action,
-                                   [3, 1, 1, 1], axis=1)
-        action_4dof = tf.concat([xyz / scale, rz], axis=1)
-
-        g_kp = tf.squeeze(g_kp)
-        f_kp = tf.squeeze(f_kp)
-        f_v = tf.squeeze(f_v)
-
-        action_4dof = tf.concat([g_kp[:2], action_4dof[0, 2:]], axis=0)
-        action_4dof = tf.expand_dims(action_4dof, axis=0)
-
-        action_task =  tf.zeros(shape=[1, 1, 3], dtype=tf.float32)
+        action_4dof = tf.zeros(shape=[1, 4], dtype=tf.float32)
+        action_task = tf.zeros(shape=[1, 1, 3], dtype=tf.float32)
 
         action = {'grasp': action_4dof,
                   'task': action_task,
