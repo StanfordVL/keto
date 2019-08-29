@@ -9,6 +9,7 @@ from robovat.math.keypoints import push_keypoints_heuristic
 from robovat.math.keypoints import reach_keypoints_heuristic
 from robovat.math.keypoints import pull_keypoints_heuristic
 from robovat.math.keypoints import combine_keypoints_heuristic
+from robovat.math.match_keypoints import match_keypoints
 from robovat.math.solver import solve_actions
 from robovat.math.solver_quadratic import solver_quadratic
 from robovat.math.solver_quadratic import solver_hammering
