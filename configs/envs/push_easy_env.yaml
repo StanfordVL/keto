@@ -1,7 +1,7 @@
 !include arm_env.yaml
 
 DEBUG: 0
-
+TASK_LEVEL: 1
 MAX_STEPS: null
 
 OBSERVATION:
@@ -22,7 +22,7 @@ ACTION:
     HIGH: [1.50, 0.50, 0.50, 6.29]
 
   KEYPOINTS:
-    NUM: 2
+    NUM: 3
     
 SIM:
   ARM:
@@ -42,7 +42,7 @@ SIM:
       'data/sim/train/*/*/*.urdf'
       ]
     TEST_PATHS: [
-      'data/sim/test/easy/*/*.urdf'
+      'data/sim/test/*/*/*.urdf'
       ]
     POSE:
       X: 0.1
@@ -56,13 +56,10 @@ SIM:
     USE_RANDOM_SAMPLE: 1
     RESAMPLE_N_EPISODES: 1
 
-  SLOT_PATH: 'data/sim/envs/tool_hammer/slot_hard.urdf'
-  PEG_PATH: 'data/sim/envs/tool_hammer/peg_hard.urdf'
+  TARGET_PATH: 'data/sim/envs/tool_push/cylinder.urdf'
 
-  SLOT_OFFSET: -0.14
   HAMMER_HEIGHT_OFFSET: 0.115
  
   Z_OFFSET: 0.1
-
 
   MAX_ACTION_STEPS: 4000

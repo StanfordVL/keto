@@ -47,7 +47,11 @@ class HammerReward(reward_fn.RewardFn):
             self.env.simulator.wait_until_stable(self.target)
             target_pose = np.array(self.target.pose.position)
             hammer_depth = target_pose[0] - self.target_pose_init[0]
-            success = 2 * int(hammer_depth > 0.01 and not self.env.task_fail)
+            if self.env.config.TASK_LEVEL > 1:
+                success = 2 * int(hammer_depth > 0.01 
+                        and not self.env.task_fail)
+            else:
+                success = 2 * int(hammer_depth > 0.01)
             logger.debug('Hammer depth: %.4f', hammer_depth)
         else:
             raise NotImplementedError
@@ -64,9 +68,9 @@ class HammerReward(reward_fn.RewardFn):
 
     def _check_cornercase(self):
         is_cnc = self.env.timeout or self.env.grasp_cornercase
-        #if not self.env.is_training:
-        #    is_cnc = is_cnc or not self.env.simulator.check_contact(
-        #        self.env.robot.arm, self.graspable)
+        if not self.env.is_training:
+            is_cnc = is_cnc or not self.env.simulator.check_contact(
+                self.env.robot.arm, self.graspable)
         return is_cnc
 
     def _update_history(self, success):

@@ -571,7 +571,7 @@ def forward_grasp(point_cloud_tf,
                   grasp_keypoint,
                   num_points=1024,
                   num_samples=128,
-                  dist_thres=0.2,
+                  dist_thres=0.3,
                   dist_kp_thres=0.4):
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
@@ -593,8 +593,9 @@ def forward_grasp(point_cloud_tf,
         point_cloud_tf, [num_grasp, 1, 1])
 
     pose_loc = tf.expand_dims(pose_rot[:, :3], 1)
-    dist = tf.linalg.norm(tf.add(pose_loc[:, :, :2],
-                                 - point_cloud_discr[:, :, :2]), axis=2)
+    dist = tf.linalg.norm(
+            tf.add(pose_loc[:, :, :2],
+            - point_cloud_discr[:, :, :2]), axis=2)
 
     dist_min = tf.reduce_min(dist, axis=1)
     dist_mask = tf.less(dist_min, dist_thres)
@@ -602,33 +603,20 @@ def forward_grasp(point_cloud_tf,
     pose_loc = tf.squeeze(pose_loc, 1)
     dist_kp = tf.linalg.norm(
         pose_loc[:, :2] - grasp_keypoint[:, :2], axis=1)
+
+    dist_kp_min = tf.reduce_min(dist_kp)
     dist_kp_mask = tf.less(dist_kp, dist_kp_thres)
 
-    dist_kp_mask_slack = tf.less(
-        dist_kp, dist_kp_thres * 2.0)
+    mask = tf.logical_or(
+            tf.logical_and(dist_mask, dist_kp_mask),
+            tf.equal(dist_kp_min, dist_kp))
 
-    dist_kp_mask = tf.cond(tf.reduce_any(dist_kp_mask),
-                           lambda: dist_kp_mask,
-                           lambda: dist_kp_mask_slack)
-
-    dist_mask_slack = tf.less(
-        dist_min, dist_thres * 2.0)
-
-    dist_mask = tf.cond(tf.reduce_any(dist_mask),
-                        lambda: dist_mask,
-                        lambda: dist_mask_slack)
-
-    mask = tf.logical_and(dist_mask, dist_kp_mask)
     mask = tf.reshape(mask, [num_grasp])
 
-    pose_rot = tf.cond(tf.reduce_any(mask),
-                       lambda: tf.boolean_mask(pose_rot, mask, axis=0),
-                       lambda: pose_rot)
+    pose_rot = tf.boolean_mask(pose_rot, mask, axis=0)
 
-    point_cloud_discr = tf.cond(tf.reduce_any(mask),
-                                lambda: tf.boolean_mask(
-        point_cloud_discr, mask, axis=0),
-        lambda: point_cloud_discr)
+    point_cloud_discr = tf.boolean_mask(
+        point_cloud_discr, mask, axis=0)
 
     score = GraspDiscriminator().build_model(
         tf.expand_dims(point_cloud_discr, 2), pose_rot)
@@ -643,8 +631,8 @@ def forward_grasp(point_cloud_tf,
 def forward_keypoint(point_cloud_tf,
                      num_points=1024,
                      num_samples=256,
-                     dist_thres=0.2,
-                     num_funct_vect=0,
+                     dist_thres=0.4,
+                     num_funct_vect=1,
                      funct_on_hull=True):
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
@@ -675,29 +663,18 @@ def forward_keypoint(point_cloud_tf,
             [0, 3, 2, 1])), axis=2)
     dist = tf.reduce_max(
         tf.reduce_min(dist_mat, axis=1), axis=1)
-    dist_mask = tf.less(dist, dist_thres)
-    dist_mask_slack = tf.less(
-        dist, dist_thres * 2.0)
+    dist_min = tf.reduce_min(dist)
 
-    mask = tf.cond(tf.reduce_any(dist_mask),
-                   lambda: dist_mask,
-                   lambda: dist_mask_slack)
+    mask = tf.logical_or(
+            tf.less(dist, dist_thres),
+            tf.equal(dist, dist_min))
 
-    keypoints_vae = tf.cond(
-            tf.reduce_any(mask),
-            lambda: [tf.boolean_mask(k, mask, axis=0) for k in keypoints_vae],
-            lambda: keypoints_vae)
+    keypoints_vae = [tf.boolean_mask(k, mask, axis=0) for k in keypoints_vae]
 
-    point_cloud_discr = tf.cond(
-            tf.reduce_any(mask),
-            lambda: tf.boolean_mask(point_cloud, mask, axis=0),
-            lambda: point_cloud)
+    point_cloud_discr = tf.boolean_mask(point_cloud, mask, axis=0)
 
     if num_funct_vect:
-        funct_vect_vae = tf.cond(
-                tf.reduce_any(mask),
-                lambda: tf.boolean_mask(funct_vect_vae, mask, axis=0),
-                lambda: funct_vect_vae)
+        funct_vect_vae = tf.boolean_mask(funct_vect_vae, mask, axis=0)
 
     score = KeypointDiscriminator().build_model(
         tf.expand_dims(point_cloud_discr, 2), keypoints_vae, funct_vect_vae)

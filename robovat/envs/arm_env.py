@@ -215,7 +215,7 @@ class HammerArmEnv(ArmEnv):
 class PushArmEnv(ArmEnv):
     """The environment of robot pushing."""
 
-    TARGET_REGION = [{
+    REGION_3 = [{
             'x': 0.2,
             'y': 0.04,
             'z': 0.1,
@@ -236,6 +236,31 @@ class PushArmEnv(ArmEnv):
             'roll': 0,
             'pitch': 0,
             'yaw': 0}]
+
+    REGION_2 = [{
+            'x': 0.2,
+            'y': 0.07,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0},
+            {
+            'x': 0.2,
+            'y': 0.13,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0}]
+
+    REGION_1 = [{
+            'x': 0.2,
+            'y': 0.1,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0}]
+
+    TARGET_REGION = [REGION_1, REGION_2, REGION_3]
 
     def __init__(self,
                  observations,
@@ -274,7 +299,8 @@ class PushArmEnv(ArmEnv):
         if self.simulator:
             self.target = []
 
-            for iregion, region in enumerate(self.TARGET_REGION):
+            for iregion, region in enumerate(
+                    self.TARGET_REGION[self.config.TASK_LEVEL-1]):
                 pose = Pose.uniform(**region)
                 target_pose = get_transform(
                         source=self.table_pose).transform(pose)
@@ -297,7 +323,7 @@ class ReachArmEnv(ArmEnv):
             'pitch': 0,
             'yaw': np.pi/2}
 
-    WALL_REGION = [{
+    WALL_REGION_3 = [{
             'x': 0.15,
             'y': 0.25,
             'z': 0.05,
@@ -312,13 +338,63 @@ class ReachArmEnv(ArmEnv):
             'pitch': 0,
             'yaw': np.pi/2}]
 
-    CEIL_REGION = {
+    WALL_REGION_2 = [{
+            'x': 0.13,
+            'y': 0.25,
+            'z': 0.05,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2},
+            {
+            'x': 0.27,
+            'y': 0.25,
+            'z': 0.05,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}]
+
+    WALL_REGION_1 = [{
+            'x': 0.13,
+            'y': 0.25,
+            'z': 0.05,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2},
+            {
+            'x': 0.27,
+            'y': 0.25,
+            'z': 0.05,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}]
+
+    WALL_REGION = [WALL_REGION_1, WALL_REGION_2, WALL_REGION_3]
+
+    CEIL_REGION_3 = {
             'x': 0.20,
             'y': 0.25,
             'z': 0.15,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2}
+
+    CEIL_REGION_2 = {
+            'x': 0.20,
+            'y': 0.25,
+            'z': 0.15,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}
+
+    CEIL_REGION_1 = {
+            'x': 0.20,
+            'y': 0.25,
+            'z': 0.00,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': np.pi/2}
+
+    CEIL_REGION = [CEIL_REGION_1, CEIL_REGION_2, CEIL_REGION_3]
 
     def __init__(self,
                  observations,
@@ -364,7 +440,8 @@ class ReachArmEnv(ArmEnv):
                     name='target')
 
             self.walls = []
-            for iregion, region in enumerate(self.WALL_REGION):
+            for iregion, region in enumerate(
+                    self.WALL_REGION[self.config.TASK_LEVEL-1]):
                 pose = Pose.uniform(**region)
                 wall_pose = get_transform(
                         source=self.table_pose).transform(pose)
@@ -375,7 +452,7 @@ class ReachArmEnv(ArmEnv):
                     name='wall_{}'.format(iregion))
                 self.walls.append(wall)
 
-            pose = Pose.uniform(**self.CEIL_REGION)
+            pose = Pose.uniform(**self.CEIL_REGION[self.config.TASK_LEVEL-1])
             ceil_pose = get_transform(source=self.table_pose).transform(pose)
             self.ceil = self.simulator.add_body(
                     self.config.SIM.CEIL_PATH, 

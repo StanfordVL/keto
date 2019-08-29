@@ -1,7 +1,7 @@
 !include arm_env.yaml
 
 DEBUG: 0
-
+TASK_LEVEL: 3
 MAX_STEPS: null
 
 OBSERVATION:

@@ -75,7 +75,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
             PushReward(
                 name='push_reward',
                 graspable_name=GRASPABLE_NAME,
-                target_name=['target_0', 'target_1', 'target_2'])
+                target_name=['target_{}'.format(index) for index in
+                    range(self.config.TASK_LEVEL)])
         ]
 
         if self.simulator:
