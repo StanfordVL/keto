@@ -5,6 +5,6 @@ python tools/run_env.py \
   --policy HammerMatchPolicy \
   --policy_config configs/policies/hammer_point_cloud_policy.yaml \
   --problem HammerPointCloudProblem \
-  --episodic 0 --num_episodes 8192 --debug 0 \
+  --episodic 0 --num_episodes 8192 --debug 1 \
   --output episodes/hammer_point_cloud \
   --checkpoint keypoints/action_models/cvae_action_hammer

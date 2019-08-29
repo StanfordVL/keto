@@ -6,7 +6,9 @@ from .hammer_action_policy import HammerActionPolicy
 from .hammer_match_policy import HammerMatchPolicy
 from .push_point_cloud_policy import PushPointCloudPolicy
 from .push_action_policy import PushActionPolicy
+from .push_match_policy import PushMatchPolicy
 from .reach_point_cloud_policy import ReachPointCloudPolicy
 from .reach_action_policy import ReachActionPolicy
+from .reach_match_policy import ReachMatchPolicy
 from .pull_point_cloud_policy import PullPointCloudPolicy
 from .combine_point_cloud_policy import CombinePointCloudPolicy
