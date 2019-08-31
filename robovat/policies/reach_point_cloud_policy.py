@@ -86,11 +86,13 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
     def _keypoints_network(self, point_cloud_tf, scale=20):
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using network policy')
-        keypoints, f_v, _ = forward_keypoint(
+        keypoints, f_v, score = forward_keypoint(
                 point_cloud_tf * scale,
                 num_samples=256,
                 num_funct_vect=1,
                 funct_on_hull=True)
+        f_v = tf.Print(f_v, 
+                [tf.nn.sigmoid(score)], message='Keypoint score ')
         g_kp, f_kp = keypoints
         g_kp = g_kp / scale
         f_kp = f_kp / scale
