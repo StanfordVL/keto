@@ -75,28 +75,12 @@ class ReachActionPolicy(point_cloud_policy.PointCloudPolicy):
              [zero, zero, one]], [3, 3])
         return mat
         
-    def _keypoints_heuristic(self, point_cloud_tf):
-        point_cloud_tf = tf.Print(
-                point_cloud_tf, [], message='Using heuristic policy')
-
-        g_kp, f_kp, f_v = tf.py_func(reach_keypoints_heuristic,
-                                     [point_cloud_tf],
-                                     [tf.float32, tf.float32, tf.float32])
-        return g_kp, f_kp, f_v
-
-
     def _keypoints_network(self, point_cloud_tf, scale=20):
-        point_cloud_tf = tf.Print(
-                point_cloud_tf, [], message='Using network policy')
-        keypoints, f_v, _ = forward_keypoint(
-                point_cloud_tf * scale,
-                num_funct_vect=1,
-                funct_on_hull=True)
-        g_kp, f_kp = keypoints
-        g_xy, g_rz = forward_action(point_cloud_tf * scale, g_kp)
-        g_kp = g_kp / scale
-        g_xy = g_xy / scale
-        g_rz = tf.atan2(g_rz[:, 1], g_rz[:, 0])
+        actions, score = forward_action(point_cloud_tf * scale)
+        grasp, trans, rot = actions
+        g_kp = grasp / scale
+        g_xy = trans / scale
+        g_rz = tf.atan2(rot[:, 1], rot[:, 0])
         return g_kp, g_xy, g_rz
 
     def _action(self,

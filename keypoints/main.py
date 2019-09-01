@@ -3,7 +3,7 @@ import argparse
 
 from cvae.build import train_vae_grasp, train_gcnn_grasp
 from cvae.build import train_vae_keypoint, train_discr_keypoint
-from cvae.build import train_decoder_action
+from cvae.build import train_vae_action, train_discr_action
 from cvae.build import inference_grasp, inference_keypoint
 
 parser = argparse.ArgumentParser()
@@ -61,11 +61,14 @@ elif args.train == 'discr_keypoint':
     train_discr_keypoint(data_path=args.data_path,
                          model_path=args.model_path,
                          task_name=args.task_name)
-elif args.train == 'action':
-    train_decoder_action(data_path=args.data_path, 
-                         model_path=args.model_path,
-                         task_name=args.task_name)
-
+elif args.train == 'vae_action':
+    train_vae_action(data_path=args.data_path, 
+                     model_path=args.model_path,
+                     task_name=args.task_name)
+elif args.train == 'discr_action':
+    train_discr_action(data_path=args.data_path, 
+                       model_path=args.model_path,
+                       task_name=args.task_name)
 elif args.train == 'inference_keypoint':
     inference_keypoint(
         data_path=args.data_path,

@@ -8,12 +8,7 @@ import tensorflow as tf
 from tf_agents.policies import policy_step
 from robovat.policies import point_cloud_policy
 
-from robovat.math import push_keypoints_heuristic
-from robovat.math import solver_general
-
 from robovat.math import Pose, get_transform
-
-from keypoints.cvae.build import forward_keypoint
 from keypoints.cvae.build import forward_grasp
 from keypoints.cvae.build import forward_action
 
@@ -74,17 +69,11 @@ class PushActionPolicy(point_cloud_policy.PointCloudPolicy):
         return mat
 
     def _keypoints_network(self, point_cloud_tf, scale=20):
-        point_cloud_tf = tf.Print(
-                point_cloud_tf, [], message='Using network policy')
-        keypoints, f_v, _ = forward_keypoint(
-                point_cloud_tf * scale,
-                num_funct_vect=1,
-                funct_on_hull=True)
-        g_kp, f_kp = keypoints
-        g_xy, g_rz = forward_action(point_cloud_tf * scale, g_kp)
-        g_kp = g_kp / scale
-        g_xy = g_xy / scale
-        g_rz = tf.atan2(g_rz[:, 1], g_rz[:, 0])
+        actions, score = forward_action(point_cloud_tf * scale)
+        grasp, trans, rot = actions
+        g_kp = grasp / scale
+        g_xy = trans / scale
+        g_rz = tf.atan2(rot[:, 1], rot[:, 0])
         return g_kp, g_xy, g_rz
 
     def _action(self,

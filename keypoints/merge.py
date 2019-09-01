@@ -37,10 +37,10 @@ elif args.model == 'grasp_keypoint':
     build_grasp_inference_graph()
     build_keypoint_inference_graph(
             num_funct_vect=int(args.num_funct_vect))
-elif args.model == 'grasp_keypoint_action':
+elif args.model == 'action':
+    build_action_inference_graph()
+elif args.model == 'grasp_action':
     build_grasp_inference_graph()
-    build_keypoint_inference_graph(
-            num_funct_vect=int(args.num_funct_vect))
     build_action_inference_graph()
 
 else:
@@ -50,14 +50,14 @@ with tf.Session() as sess:
 
     vars = tf.global_variables()
 
-    if args.model in ['grasp', 'keypoint']:
+    if args.model in ['grasp', 'keypoint', 'action']:
         vars_vae = [var for var in vars if 'vae' in var.name]
         vars_discr = [var for var in vars if 'discr' in var.name]
 
         saver = tf.train.Saver(var_list=vars)
         saver_vae = tf.train.Saver(var_list=vars_vae)
         saver_discr = tf.train.Saver(var_list=vars_discr)
-
+ 
         saver_vae.restore(sess, args.vae)
         saver_discr.restore(sess, args.discr)
         saver.save(sess, args.output)
@@ -74,20 +74,16 @@ with tf.Session() as sess:
         saver_keypoint.restore(sess, args.keypoint)
         saver.save(sess, args.output)
 
-    elif args.model == 'grasp_keypoint_action':
+    elif args.model == 'grasp_action':
         vars_grasp = [var for var in vars if 'grasp' in var.name]
-        vars_keypoint = [var for var in vars if 'keypoint' in var.name]
         vars_action = [var for var in vars if 'action' in var.name]
 
         saver = tf.train.Saver(var_list=vars)
         saver_grasp = tf.train.Saver(var_list=vars_grasp)
-        saver_keypoint = tf.train.Saver(var_list=vars_keypoint)
         saver_action = tf.train.Saver(var_list=vars_action)
 
         saver_grasp.restore(sess, args.grasp)
-        saver_keypoint.restore(sess, args.keypoint)
         saver_action.restore(sess, args.action)
-
         saver.save(sess, args.output)
 
     else:
