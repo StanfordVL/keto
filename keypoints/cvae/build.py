@@ -1112,7 +1112,7 @@ def train_vae_action(data_path,
     with tf.Session(config=config) as sess:
         sess.run([tf.global_variables_initializer()])
         if model_path:
-            running_log.write('vae_{}'.format(task_name),
+            running_log.write('vae_action_{}'.format(task_name),
                               'loading model from {}'.format(model_path))
             saver.restore(sess, model_path)
 
@@ -1140,7 +1140,7 @@ def train_vae_action(data_path,
                 feed_dict=feed_dict)
 
             if step % log_step == 0:
-                running_log.write('vae_{}'.format(task_name),
+                running_log.write('vae_action_{}'.format(task_name),
                                   'step: {}/{}, '.format(step, steps) +
                                   'loss: {:.3f}, grasp: {:.3f}/{:.3f}, '.format(
                                       loss_np, vae_grasp, std_gt_grasp_np) +
@@ -1477,7 +1477,7 @@ def train_discr_action(data_path,
     with tf.Session(config=config) as sess:
         sess.run([tf.global_variables_initializer()])
         if model_path:
-            running_log.write('discr_{}'.format(task_name),
+            running_log.write('discr_action_{}'.format(task_name),
                               'loading model from {}'.format(model_path))
             saver.restore(sess, model_path)
 
@@ -1497,7 +1497,7 @@ def train_discr_action(data_path,
                 feed_dict=feed_dict)
 
             if step % log_step == 0:
-                running_log.write('discr_{}'.format(task_name),
+                running_log.write('discr_action_{}'.format(task_name),
                                   'step: {}/{}, '.format(step, steps) +
                                   'loss: {:.3f}, acc: {:.3f}'.format(
                                       loss_np, acc_np * 100))
@@ -1519,7 +1519,7 @@ def train_discr_action(data_path,
                                  actions_label_tf: label_np}
 
                     [acc_np] = sess.run([acc_discr], feed_dict=feed_dict)
-                    running_log.write('discr_{}'.format(task_name),
+                    running_log.write('discr_action_{}'.format(task_name),
                                       'noise: {:.3f}, acc: {:.3f}'.format(
                                           noise_level, acc_np * 100))
 
