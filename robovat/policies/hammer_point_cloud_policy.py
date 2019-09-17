@@ -27,7 +27,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         'z': 0.1,
         'roll': 0,
         'pitch': 0,
-        'yaw': 0,
+        'yaw': np.pi/2,
     }
 
     TABLE_POSE = [

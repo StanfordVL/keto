@@ -1,6 +1,6 @@
 python tools/run_env.py \
   --env PushPointCloudEnv \
-  --env_config configs/envs/push_easy_env.yaml \
+  --env_config configs/envs/push_hard_env.yaml \
   --is_training 0 \
   --policy PushPointCloudPolicy \
   --policy_config configs/policies/push_point_cloud_policy.yaml \

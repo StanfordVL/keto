@@ -56,11 +56,15 @@ SIM:
     USE_RANDOM_SAMPLE: 1
     RESAMPLE_N_EPISODES: 1
 
-  TARGET_PATH: 'data/sim/envs/tool_combine/cube.urdf'
+  HEAD: 
+    PATH: 'data/robots/rethink/head/head.urdf'
+    POSE: [[0, 0, 0.4], [0, 0, 0]]
+
+  TARGET_PATH: 'data/sim/envs/tool_combine/peg_hard.urdf'
   WALL_PATH: 'data/sim/envs/tool_combine/wall.urdf'
   CEIL_PATH: 'data/sim/envs/tool_combine/ceil.urdf'
   FLOOR_PATH: 'data/sim/envs/tool_combine/floor.urdf'
-  OBSTACLE_PATH: 'data/sim/envs/tool_combine/cylinder.urdf'
+  OBSTACLE_PATH: 'data/sim/envs/tool_combine/textured.urdf'
   SLOT_PATH: 'data/sim/envs/tool_combine/slot_hard.urdf'
 
   HAMMER_HEIGHT_OFFSET: 0.115

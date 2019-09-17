@@ -60,6 +60,10 @@ class ArmEnv(robot_env.RobotEnv):
                     pose=self.config.SIM.ARM.POSE,
                     joint_positions=self.config.ARM.OFFSTAGE_POSITIONS,
                     config=self.config.SIM.ARM.CONFIG)
+            self.simulator.add_body(self.config.SIM.HEAD.PATH,
+                                    self.config.SIM.HEAD.POSE,
+                                    is_static=True,
+                                    name='sawyer_head')
         else:
             self.robot = sawyer.SawyerReal()
 
@@ -136,7 +140,7 @@ class HammerArmEnv(ArmEnv):
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
-            'yaw': 0,
+            'yaw': np.pi/2,
             }
 
     def __init__(self,
@@ -176,7 +180,7 @@ class HammerArmEnv(ArmEnv):
         if self.simulator:
             pose = Pose.uniform(**self.TARGET_REGION)
             peg_pose = get_transform(source=self.table_pose).transform(pose)
-            slot_offset = np.array([-self.config.SIM.SLOT_OFFSET, 0, 0])
+            slot_offset = np.array([0, -self.config.SIM.SLOT_OFFSET, 0])
 
             slot_pose = Pose([peg_pose.position + slot_offset,
                               peg_pose.orientation])
@@ -193,7 +197,7 @@ class HammerArmEnv(ArmEnv):
                     name='peg')
 
             # Visualize the goal.
-        
+            """
             if self.debug:
                 import pybullet
 
@@ -210,7 +214,7 @@ class HammerArmEnv(ArmEnv):
                         [target[0], target[1] + 0.02, target[2]],
                         lineColorRGB=[1, 1, 0],
                         lineWidth=5)
-
+            """
 
 class PushArmEnv(ArmEnv):
     """The environment of robot pushing."""
@@ -311,6 +315,17 @@ class PushArmEnv(ArmEnv):
                     name='target_{}'.format(iregion))
                 self.target.append(target)
 
+            if self.debug:
+                import pybullet
+
+                target = self.target[1].pose.position
+
+                pybullet.addUserDebugLine(
+                        [target[0] + 0.06, target[1] - 0.15, 0.025],
+                        [target[0] + 0.06, target[1] + 0.15, 0.025],
+                        lineColorRGB=[1, 1, 0],
+                        lineWidth=4)
+
 
 class ReachArmEnv(ArmEnv):
     """The environment of robot reaching."""
@@ -373,7 +388,7 @@ class ReachArmEnv(ArmEnv):
     CEIL_REGION_3 = {
             'x': 0.20,
             'y': 0.25,
-            'z': 0.15,
+            'z': 0.00,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2}
@@ -569,7 +584,15 @@ class CombineArmEnv(ArmEnv):
             'z': 0.1,
             'roll': 0,
             'pitch': 0,
-            'yaw': 0}]
+            'yaw': 0},
+            {
+            'x': 0.45,
+            'y': -0.05,
+            'z': 0.1,
+            'roll': 0,
+            'pitch': 0,
+            'yaw': 0}
+            ]
 
     SLOT_REGION = {
             'x': 0.25,

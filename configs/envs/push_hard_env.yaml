@@ -34,7 +34,7 @@ SIM:
     POSE: [[0, 0, -0.9], [0, 0, 0]]
 
   TABLE:
-    PATH: 'data/sim/tables/table_grasp.urdf'
+    PATH: 'data/sim/tables/table.urdf'
     POSE: [[0.6, 0, 0], [0, 0, 0]]
 
   GRASPABLE:
@@ -42,7 +42,7 @@ SIM:
       'data/sim/train/*/*/*.urdf'
       ]
     TEST_PATHS: [
-      'data/sim/test/easy/*/*.urdf'
+      'data/sim/test/easy/000023/*.urdf'
       ]
     POSE:
       X: 0.1

@@ -375,7 +375,7 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
-                            speed=1.2)
+                            speed=0.1)
                         ready = False
                         time_steps = 0
                         while(not ready):

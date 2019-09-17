@@ -36,6 +36,7 @@ PART_CONFIG = {
 CMAP = {
         'wood': [0.494, 0.278, 0.164],
         'metal': [0.654, 0.698, 0.761],
+        'grey': [0.8, 0.8, 0.8],
         }
 
 
@@ -77,8 +78,8 @@ class General(Body):
         self.random_flip = random_flip
 
         if color == 'realistic':
-            main_color = CMAP['wood']
-            part_color = CMAP['metal']
+            main_color = CMAP['grey']
+            part_color = CMAP['grey']
         else:
             main_color = None
             part_color = None

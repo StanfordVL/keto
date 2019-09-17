@@ -237,11 +237,11 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
         target = np.array(self.target.pose.position).flatten()
     
         action_reach = np.array([
-            [target[0], target[1] - d * 1.8, 0.40, -np.pi/2],
-            [target[0], target[1] - d * 1.8, 0.20, -np.pi/2],
-            [target[0], target[1] - d * 1.0, 0.20, -np.pi/2],
-            [target[0], target[1] - d * 1.8, 0.20, -np.pi/2],
-            [target[0], target[1] - d * 1.8, 0.40, -np.pi/2]])
+            [target[0] - 0.01, target[1] - d * 1.8, 0.40, -np.pi/2],
+            [target[0] - 0.01, target[1] - d * 1.8, 0.21, -np.pi/2],
+            [target[0] - 0.01, target[1] - d * 1.0, 0.21, -np.pi/2],
+            [target[0] - 0.01, target[1] - d * 1.8, 0.21, -np.pi/2],
+            [target[0] - 0.01, target[1] - d * 1.8, 0.40, -np.pi/2]])
         if not self._execute_action_general(action_reach, self.graspable):
             return
         self.simulator.wait_until_stable(self.target)
@@ -471,7 +471,7 @@ class CombinePointCloudEnv(arm_env.CombineArmEnv):
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
-                            speed=0.7)
+                            speed=0.001)
                         ready = False
                         while(not ready):
                             if self.simulator:
