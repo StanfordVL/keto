@@ -118,17 +118,17 @@ class ReachActionPolicy(point_cloud_policy.PointCloudPolicy):
             force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
 
         pre_pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.25, tf.constant([0.4], dtype=tf.float32),
+            g_xy - force * 0.3, tf.constant([0.4], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
         pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.25, tf.constant([0.20], dtype=tf.float32),
+            g_xy - force * 0.3, tf.constant([0.20], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
         pre_target_pose = tf.concat([
-            g_xy - force * 0.12, tf.constant([0.18], dtype=tf.float32),
+            g_xy - force * 0.18, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

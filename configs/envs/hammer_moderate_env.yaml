@@ -44,7 +44,7 @@ SIM:
       'data/sim/train/*/*/*.urdf'
       ]
     TEST_PATHS: [
-      'data/sim/test/easy/*/*.urdf'
+      'data/sim/test/hard/*/*.urdf'
       ]
     POSE:
       X: 0.1
