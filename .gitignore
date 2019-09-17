@@ -2,6 +2,7 @@
 versions
 slurm
 runs
+*.npy
 *.obj
 *.urdf
 *.png
