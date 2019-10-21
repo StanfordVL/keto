@@ -2,23 +2,30 @@
 
 DEBUG: 0
 
+TASK_LEVEL: 1
+
 MAX_STEPS: null
 
 OBSERVATION:
-  # Choose between `depth` and `point_cloud`.
-  TYPE: 'depth'
+  TYPE: 'point_cloud'
   NUM_POINTS: 1024
 
 ACTION:
-  # Choose between `IMAGE`(in image space) and `CUBOID`(in a 3D cuboid region).
-  TYPE: 'IMAGE'
+  TYPE: 'CUBOID'
 
-  # The `CUBOID` defines a cuvoid region for the grasping center.
-  CUBOID:
+  # The `GRASP` defines a cuvoid region for the grasping center.
+  GRASP:
     LOW: [0.30, -0.30, 0.02]
     HIGH: [0.90, 0.30, 0.12]
 
+  TASK:
+    T: 8
+    LOW:  [0.60, 0.00, 0.02, 0.00]
+    HIGH: [1.50, 0.50, 0.50, 6.29]
 
+  KEYPOINTS:
+    NUM: 2
+    
 SIM:
   ARM:
     CONFIG: 'configs/robots/sawyer.yaml'
@@ -30,13 +37,15 @@ SIM:
 
   TABLE:
     PATH: 'data/sim/tables/table.urdf'
-    POSE: [[0.6, 0, -0.9], [0, 0, 0]]
-    HEIGHT_RANGE: [0.9, 0.9]
+    POSE: [[0.6, 0, 0], [0, 0, 0]]
 
   GRASPABLE:
     PATHS: [
-    'data/sim/train/*/*/*.urdf'
-    ]
+      'data/sim/train/*/*/*.urdf'
+      ]
+    TEST_PATHS: [
+      'data/sim/test/easy/*/*.urdf'
+      ]
     POSE:
       X: 0.1
       Y: -0.2
@@ -52,5 +61,14 @@ SIM:
   HEAD:
     PATH: 'data/robots/rethink/head/head.urdf'
     POSE: [[0, 0, 0.4], [0, 0, 0]]
+
+  SLOT_PATH: 'data/sim/envs/tool_hammer/slot_hard.urdf'
+  PEG_PATH: 'data/sim/envs/tool_hammer/peg_hard.urdf'
+
+  SLOT_OFFSET: -0.14
+  HAMMER_HEIGHT_OFFSET: 0.115
+ 
+  Z_OFFSET: 0.1
+
 
   MAX_ACTION_STEPS: 4000

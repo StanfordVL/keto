@@ -60,6 +60,10 @@ class ArmEnv(robot_env.RobotEnv):
                     pose=self.config.SIM.ARM.POSE,
                     joint_positions=self.config.ARM.OFFSTAGE_POSITIONS,
                     config=self.config.SIM.ARM.CONFIG)
+            self.simulator.add_body(self.config.SIM.HEAD.PATH,
+                                    self.config.SIM.HEAD.POSE,
+                                    is_static=True,
+                                    name='sawyer_head')
         else:
             self.robot = sawyer.SawyerReal()
 
@@ -354,14 +358,14 @@ class ReachArmEnv(ArmEnv):
             'yaw': np.pi/2}]
 
     WALL_REGION_1 = [{
-            'x': 0.13,
+            'x': 0.15,
             'y': 0.25,
             'z': 0.05,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2},
             {
-            'x': 0.27,
+            'x': 0.25,
             'y': 0.25,
             'z': 0.05,
             'roll': 0,
@@ -373,7 +377,7 @@ class ReachArmEnv(ArmEnv):
     CEIL_REGION_3 = {
             'x': 0.20,
             'y': 0.25,
-            'z': 0.15,
+            'z': 0.14,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2}
@@ -381,7 +385,7 @@ class ReachArmEnv(ArmEnv):
     CEIL_REGION_2 = {
             'x': 0.20,
             'y': 0.25,
-            'z': 0.15,
+            'z': 0.14,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2}
@@ -460,213 +464,3 @@ class ReachArmEnv(ArmEnv):
                     is_static=True,
                     name='ceil')
 
-
-class PullArmEnv(ArmEnv):
-    """The environment of robot pulling."""
-
-    TARGET_REGION = [{
-            'x': 0.2,
-            'y': 0.0,
-            'z': 0.1,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': 0}]
-
-    def __init__(self,
-                 observations,
-                 reward_fns,
-                 simulator=None,
-                 config=None,
-                 debug=False):
-        """Initialize."""
-        super(PullArmEnv, self).__init__(
-            observations=observations,
-            reward_fns=reward_fns,
-            simulator=simulator,
-            config=config,
-            debug=debug)
-
-    def reset_scene(self):
-        """Reset the scene in simulation or the real world."""
-        if self.simulator:
-            self.ground = self.simulator.add_body(self.config.SIM.GROUND.PATH,
-                                                  self.config.SIM.GROUND.POSE,
-                                                  is_static=True,
-                                                  name='ground')
-
-            self.table_pose = Pose(self.config.SIM.TABLE.POSE)
-            self.table = self.simulator.add_body(self.config.SIM.TABLE.PATH,
-                                                 self.table_pose,
-                                                 is_static=True,
-                                                 name='table')
-            self._reset_task()
-            self.reset_camera()
-
-    def _reset_task(self):
-        """Reset the task region.
-        """
-        # Sample and load a target object.
-        if self.simulator:
-            self.target = []
-
-            for iregion, region in enumerate(self.TARGET_REGION):
-                pose = Pose.uniform(**region)
-                target_pose = get_transform(
-                        source=self.table_pose).transform(pose)
-                target = self.simulator.add_body(
-                    self.config.SIM.TARGET_PATH,
-                    target_pose, 
-                    is_static=False,
-                    name='target_{}'.format(iregion))
-                self.target.append(target)
-
-
-class CombineArmEnv(ArmEnv):
-    """The environment of combine."""
-
-    TARGET_REGION = {
-            'x': 0.25,
-            'y': 0.10,
-            'z': 0.10,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': np.pi/2}
-
-    WALL_REGION = [{
-            'x': 0.20,
-            'y': 0.10,
-            'z': 0.05,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': np.pi/2},
-            {
-            'x': 0.30,
-            'y': 0.10,
-            'z': 0.05,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': np.pi/2}]
-
-    CEIL_REGION = {
-            'x': 0.25,
-            'y': 0.10,
-            'z': 0.13,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': np.pi/2}
-
-    FLOOR_REGION = {
-            'x': 0.25,
-            'y': 0.25,
-            'z': 0.03,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': np.pi/2}
-
-    OBSTACLE_REGION = [{
-            'x': 0.25,
-            'y': -0.05,
-            'z': 0.1,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': 0}]
-
-    SLOT_REGION = {
-            'x': 0.25,
-            'y': 0.43,
-            'z': 0.16,
-            'roll': 0,
-            'pitch': 0,
-            'yaw': np.pi/2}
-
-    def __init__(self,
-                 observations,
-                 reward_fns,
-                 simulator=None,
-                 config=None,
-                 debug=False):
-        """Initialize."""
-        super(CombineArmEnv, self).__init__(
-            observations=observations,
-            reward_fns=reward_fns,
-            simulator=simulator,
-            config=config,
-            debug=debug)
-
-    def reset_scene(self):
-        """Reset the scene in simulation or the real world."""
-        if self.simulator:
-            self.ground = self.simulator.add_body(self.config.SIM.GROUND.PATH,
-                                                  self.config.SIM.GROUND.POSE,
-                                                  is_static=True,
-                                                  name='ground')
-
-            self.table_pose = Pose(self.config.SIM.TABLE.POSE)
-            self.table = self.simulator.add_body(self.config.SIM.TABLE.PATH,
-                                                 self.table_pose,
-                                                 is_static=True,
-                                                 name='table')
-            self._reset_task()
-            self.reset_camera()
-
-    def _reset_task(self):
-        """Reset the task region.
-        """
-        # Sample and load a target object.
-        if self.simulator:
-            pose = Pose.uniform(**self.TARGET_REGION)
-            target_pose = get_transform(source=self.table_pose).transform(pose)
-            self.target = self.simulator.add_body(
-                    self.config.SIM.TARGET_PATH, 
-                    target_pose, 
-                    is_static=False,
-                    name='target')
-
-            self.walls = []
-            for iregion, region in enumerate(self.WALL_REGION):
-                pose = Pose.uniform(**region)
-                wall_pose = get_transform(
-                        source=self.table_pose).transform(pose)
-                wall = self.simulator.add_body(
-                    self.config.SIM.WALL_PATH,
-                    wall_pose, 
-                    is_static=True,
-                    name='wall_{}'.format(iregion))
-                self.walls.append(wall)
-
-            pose = Pose.uniform(**self.CEIL_REGION)
-            ceil_pose = get_transform(source=self.table_pose).transform(pose)
-            self.ceil = self.simulator.add_body(
-                    self.config.SIM.CEIL_PATH, 
-                    ceil_pose, 
-                    is_static=True,
-                    name='ceil')
-
-            pose = Pose.uniform(**self.FLOOR_REGION)
-            floor_pose = get_transform(source=self.table_pose).transform(pose)
-            self.floor = self.simulator.add_body(
-                    self.config.SIM.FLOOR_PATH, 
-                    floor_pose, 
-                    is_static=True,
-                    name='floor')
-
-            self.obstacles = []
-            for iregion, region in enumerate(self.OBSTACLE_REGION):
-                pose = Pose.uniform(**region)
-                obstacle_pose = get_transform(
-                        source=self.table_pose).transform(pose)
-                obstacle = self.simulator.add_body(
-                    self.config.SIM.OBSTACLE_PATH,
-                    obstacle_pose, 
-                    is_static=False,
-                    name='obstacle_{}'.format(iregion))
-                self.obstacles.append(obstacle)
-
-            pose = Pose.uniform(**self.SLOT_REGION)
-            slot_pose = get_transform(source=self.table_pose).transform(pose)
-            self.slot = self.simulator.add_body(
-                    self.config.SIM.SLOT_PATH, 
-                    slot_pose, 
-                    is_static=True,
-                    name='slot')
- 

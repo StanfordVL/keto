@@ -164,13 +164,18 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             [g_drz]],
             axis=0)
 
+        pre_pre_pre_target_pose = tf.concat([
+            g_xy, tf.constant([0.40], dtype=tf.float32),
+            [g_rz]],
+            axis=0)
+
         pre_pre_target_pose = tf.concat([
-            g_xy - force * 0.18, tf.constant([0.40], dtype=tf.float32),
+            g_xy - force * 0.12, tf.constant([0.40], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
         pre_target_pose = tf.concat([
-            g_xy - force * 0.18, tf.constant([0.21], dtype=tf.float32),
+            g_xy - force * 0.12, tf.constant([0.21], dtype=tf.float32),
             [g_rz]],
             axis=0)
 
@@ -185,7 +190,8 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             axis=0)
 
         action_task = self._concat_actions(
-            [target_rot, pre_pre_target_pose, pre_target_pose,
+            [target_rot, pre_pre_pre_target_pose,
+                pre_pre_target_pose, pre_target_pose,
                 start_target_pose, target_pose])
 
         action = {'grasp': action_4dof,

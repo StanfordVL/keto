@@ -1,11 +1,29 @@
 import os
 import h5py
+import argparse
 import numpy as np
 from multiprocessing import Manager, Pool
 
-point_cloud_dir = './point_cloud'
-grasp_4dof_dir = './grasp_4dof'
-save_path = './data.hdf5'
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    '--point_cloud',
+    type=str)
+
+parser.add_argument(
+    '--grasp',
+    type=str)
+
+parser.add_argument(
+    '--save',
+    type=str,
+    default='./data.hdf5')
+
+args = parser.parse_args()
+
+point_cloud_dir = args.point_cloud
+grasp_4dof_dir = args.grasp
+save_path = args.save
 
 scale = 20
 
@@ -15,7 +33,6 @@ data_list = os.listdir(point_cloud_dir)
 
 data_sublists = [data_list[x:x + batch_size]
                  for x in range(0, len(data_list), batch_size)]
-
 
 class Logger(object):
 

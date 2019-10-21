@@ -151,8 +151,12 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         target_force = tf.concat([
             force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
 
+        pre_overhead_pose = tf.concat([
+            g_xy, tf.constant([0.40], dtype=tf.float32),
+            [g_rz]],
+            axis=0)
         overhead_pose = tf.concat([
-            g_xy - force * 0.18, tf.constant([0.40], dtype=tf.float32),
+            g_xy - force * 0.12, tf.constant([0.40], dtype=tf.float32),
             [g_rz]],
             axis=0)
         pre_target_pose = tf.concat([
@@ -165,7 +169,8 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             axis=0)
 
         action_task = self._concat_actions(
-            [target_force, overhead_pose, pre_target_pose, target_pose])
+            [target_force, pre_overhead_pose,
+                overhead_pose, pre_target_pose, target_pose])
 
         action = {'grasp': action_4dof,
                   'task': action_task,

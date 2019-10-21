@@ -9,10 +9,9 @@ from cvae.build import inference_grasp, inference_keypoint
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    '--train',
+    '--mode',
     type=str,
-    default=None,
-    help='vae or gcnn or test')
+    default=None)
 
 parser.add_argument(
     '--model_path',
@@ -43,33 +42,33 @@ args = parser.parse_args()
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
-if args.train == 'vae_grasp':
+if args.mode == 'vae_grasp':
     train_vae_grasp(data_path=args.data_path,
                     model_path=args.model_path)
-elif args.train == 'gcnn_grasp':
+elif args.mode == 'gcnn_grasp':
     train_gcnn_grasp(data_path=args.data_path,
                      model_path=args.model_path)
-elif args.train == 'inference_grasp':
+elif args.mode == 'inference_grasp':
     inference_grasp(
         data_path=args.data_path,
         model_path=args.model_path)
-elif args.train == 'vae_keypoint':
+elif args.mode == 'vae_keypoint':
     train_vae_keypoint(data_path=args.data_path,
                        model_path=args.model_path,
                        task_name=args.task_name)
-elif args.train == 'discr_keypoint':
+elif args.mode == 'discr_keypoint':
     train_discr_keypoint(data_path=args.data_path,
                          model_path=args.model_path,
                          task_name=args.task_name)
-elif args.train == 'vae_action':
+elif args.mode == 'vae_action':
     train_vae_action(data_path=args.data_path, 
                      model_path=args.model_path,
                      task_name=args.task_name)
-elif args.train == 'discr_action':
+elif args.mode == 'discr_action':
     train_discr_action(data_path=args.data_path, 
                        model_path=args.model_path,
                        task_name=args.task_name)
-elif args.train == 'inference_keypoint':
+elif args.mode == 'inference_keypoint':
     inference_keypoint(
         data_path=args.data_path,
         model_path=args.model_path)

@@ -309,12 +309,12 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
                             lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.robot.r_finger_tip.set_dynamics(
                             lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.table.set_dynamics(
                             lateral_friction=1)
 

@@ -16,7 +16,6 @@ from PIL import Image
 from robovat.perception import depth_utils
 from robovat.perception.camera.camera import Camera
 from robovat.utils.logging import logger
-from robovat.grasp import visualize as grasp_vis
 from robovat.grasp import Grasp2D
 
 
@@ -235,11 +234,6 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
             cropped_image = image[crop[0]:crop[2],
                                   crop[1]:crop[3]]
 
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # plt.imshow(image)
-        # plt.show()
-
         # Crope the image.
         image_filtered = scipy.ndimage.filters.gaussian_filter(
             cropped_image, sigma=self.depth_grad_gaussian_sigma)
@@ -367,11 +361,5 @@ class AntipodalDepthImageGraspSampler(ImageGraspSampler):
         if num_grasps == 0 or len(grasps) == 0:
             grasps = np.ones(shape=[1, 5], dtype=np.float32)
 
-        if self.debug:
-            import matplotlib.pyplot as plt
-            plt.figure()
-            g = Grasp2D.from_vector(grasps[0], camera)
-            grasp_vis.plot_grasp_on_image(image, g)
-            plt.show()
         logger.debug('Grasps shape {}'.format(grasps.shape))
         return grasps

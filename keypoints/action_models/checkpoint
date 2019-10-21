@@ -1,2 +1,0 @@
-model_checkpoint_path: "cvae_action_reach"
-all_model_checkpoint_paths: "cvae_action_reach"

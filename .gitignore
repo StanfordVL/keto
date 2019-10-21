@@ -12,7 +12,9 @@ runs
 *.nfs*
 *.out
 *.json
+models
 data
+datagen
 outputs
 episodes
 log

@@ -137,10 +137,9 @@ class Grasp4DofEnv(arm_env.ArmEnv):
 
     def feedback(self, reward):
         self.success_record[self.graspable_index] += reward
-        print(self.success_record)
         return
 
-    def choose_graspable_index(self, explore_prob=2.0):
+    def choose_graspable_index(self, explore_prob=0.8):
         if np.random.uniform() < explore_prob:
             return np.random.randint(len(self.all_graspable_paths))
         record = self.success_record + np.random.normal(
