@@ -2,7 +2,7 @@
 
 [Zengyi Qin](https://zengyi-qin.github.io/), [Kuan Fang](http://ai.stanford.edu/~kuanfang/), [Yuke Zhu](http://ai.stanford.edu/~yukez/), [Li Fei-Fei](http://svl.stanford.edu/people/) and [Silvio Savarese](http://svl.stanford.edu/people/)
 
-[overview](docs/overview.png)
+![overview](docs/overview.png)
 
 ### Install
 
