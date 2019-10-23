@@ -7,4 +7,4 @@ python tools/run_env.py \
   --problem ReachPointCloudProblem \
   --episodic 0 --num_episodes 200000 --debug 1 \
   --output episodes/reach_point_cloud \
-  --checkpoint keypoints/models/cvae_reach
+  --checkpoint keypoints/models/cvae_grasp

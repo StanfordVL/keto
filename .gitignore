@@ -5,8 +5,6 @@ runs
 *.npy
 *.obj
 *.urdf
-*.png
-*.jpg
 *.hdf5
 *.pyc
 *.nfs*

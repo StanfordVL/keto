@@ -16,13 +16,13 @@ from cvae.discriminator import ActionDiscriminator
 import matplotlib as mpl
 mpl.use('Agg')
 
-
 logging.basicConfig(level=logging.DEBUG)
 
 
-def check(x):
-    print(np.sum(x))
-    return x
+def makedir(path):
+    if not os.path.exists(path):
+        os.mkdirs(path)
+    return
 
 
 class RunningLog(object):
@@ -891,6 +891,7 @@ def train_vae_grasp(data_path,
                                       vae_mmd, z_mean_np, z_std_np) +
                                   'dist: {:.3f}'.format(vae_dist))
             if step > 0 and step % save_step == 0:
+                makedir('./runs/vae')
                 saver.save(sess,
                            './runs/vae/vae_{}'.format(str(step).zfill(6)))
                 for index in range(pos_p_np.shape[0]):
@@ -1040,6 +1041,7 @@ def train_vae_keypoint(data_path,
                                       vae_mmd, z_mean_np, z_std_np))
 
             if step > 0 and step % save_step == 0:
+                makedir('./runs/vae')
                 saver.save(sess,
                            './runs/vae/vae_keypoint_{}_{}'.format(
                                task_name, str(step).zfill(6)))
@@ -1152,6 +1154,7 @@ def train_vae_action(data_path,
                                       vae_mmd, z_mean_np, z_std_np))
 
             if step > 0 and step % save_step == 0:
+                makedir('./runs/vae')
                 saver.save(sess,
                            './runs/vae/vae_action_{}_{}'.format(
                                task_name, str(step).zfill(6)))
@@ -1235,6 +1238,7 @@ def train_gcnn_grasp(data_path,
                                                                      acc_np))
 
             if step > 0 and step % save_step == 0:
+                makedir('./runs/gcnn')
                 saver.save(sess, './runs/gcnn/gcnn_{}'.format(
                     str(step).zfill(6)))
 
@@ -1399,6 +1403,7 @@ def train_discr_keypoint(data_path,
                                       loss_np, acc_np * 100))
 
             if step > 0 and step % save_step == 0:
+                makedir('./runs/discr')
                 saver.save(sess,
                            './runs/discr/discr_keypoint_{}_{}'.format(
                                task_name, str(step).zfill(6)))

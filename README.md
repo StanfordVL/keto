@@ -1,5 +1,9 @@
 ## KETO: Learning Keypoint Representations for Tool Manipulation
 
+[Zengyi Qin](https://zengyi-qin.github.io/), [Kuan Fang](http://ai.stanford.edu/~kuanfang/), [Yuke Zhu](http://ai.stanford.edu/~yukez/), [Li Fei-Fei](http://svl.stanford.edu/people/) and [Silvio Savarese](http://svl.stanford.edu/people/)
+
+[overview](docs/overview.png)
+
 ### Install
 
 Clone this repository
@@ -7,7 +11,7 @@ Clone this repository
 git clone https://github.com/XXX/keto.git 
 ```
 
-Denote the repository path as `KETO`. Download and extract [data.tar.gz] in `KETO` and [models.tar.gz] in `KETO/keypoints`. Then the directory should contain `KETO/data` and `KETO/keypoints/models`. Create a clean virtual environment with Python 3.6. If you are using Anaconda, you could run `conda create -n keto python=3.6` to create an environment named keto and activate this environment by `conda activate keto`. `cd KETO` and execute commands as the followings.
+Denote the repository path as `KETO`. Download and extract [data.tar.gz](https://cloud.tsinghua.edu.cn/f/2375b7da83b44db8aaff/?dl=1) in `KETO` and [models.tar.gz](https://cloud.tsinghua.edu.cn/f/39abcf2cf120486fa191/?dl=1) in `KETO/keypoints`. Then the directory should contain `KETO/data` and `KETO/keypoints/models`. Create a clean virtual environment with Python 3.6. If you are using Anaconda, you could run `conda create -n keto python=3.6` to create an environment named keto and activate this environment by `conda activate keto`. `cd KETO` and execute commands as the followings.
 
 Install the dependencies:
 ```bash
@@ -38,7 +42,7 @@ Run the random grasping policy to collect training data:
 ```bash
 sh scripts/run_grasp_random.sh
 ```
-In the experiment, we ran 300 copies of `run_grasp_random.sh` in parallel on machines with over 300 CPU cores, collecting 100K episodes. GPUs are unnecessary here, since the running time is mostly consumed by CPUs. The data will be saved to `episodes/grasp_4dof_random/grasp`, including the grasp location, rotation and a binary value indicating whether the grasp succeeded. We store the collected data in a single hdf5 file to boost the data access in training:
+In the experiment, we ran 300 copies of `run_grasp_random.sh` in parallel on machines with over 300 CPU cores, collecting 100K episodes. GPUs are unnecessary here, since the running time is mostly consumed by CPUs. The data will be saved to `episodes/grasp_4dof_random`, including the grasp location, rotation and a binary value indicating whether the grasp succeeded, as well as the point cloud input associated with each grasp. We store the collected data in a single hdf5 file to boost the data access in training:
 ```bash
 cd keypoints && mkdir data && python utils/grasp/make_inputs_multiproc.py --point_cloud ../episodes/grasp_4dof_random/point_cloud --grasp ../episodes/grasp_4dof_random/grasp --save data/data_grasp.hdf5
 ```
@@ -51,7 +55,7 @@ Train the grasp evaluation network:
 ```bash
 python main.py --mode gcnn_grasp --data_path data/data_grasp.hdf5 --gpu GPU_ID
 ```
-The VAE can generate grasp candidates from the input point cloud, while the evaluation network can score the quality of the candidates. The above two commands are independent and can be run in parallel to save time. After training, we merge the VAE and the evaluator as a single checkpoint:
+The VAE generates grasp candidates from the input point cloud, while the evaluation network scores the quality of the candidates. The above two commands are independent and can be run in parallel to save time. After training, we merge the VAE and the evaluator as a single checkpoint:
 ```bash
 python merge.py --model grasp --vae runs/vae/vae_60000 --discr runs/gcnn/gcnn_60000 --output models/cvae_grasp
 ```
@@ -74,7 +78,7 @@ Train the keypoint evaluation network:
 ```bash
 python main.py --mode discr_keypoint --data_path data/data_push.hdf5 --gpu GPU_ID
 ```
-The VAE can produce keypoint candidates from the input point cloud, while the evaluation network can score the candidates to select the best one as output. The above two commands can be run in parallel to save time. After training, we merge the VAE and the evaluator as a keypoint predictor for the pushing task:
+The VAE produces keypoint candidates from the input point cloud, while the evaluation network scores the candidates to select the best one as output. The above two commands can be run in parallel to save time. After training, we merge the VAE and the evaluator as a keypoint predictor for the pushing task:
 ```bash
 python merge.py --model keypoint --vae runs/vae/vae_keypoint_push_120000 --discr runs/discr/discr_keypoint_push_120000 --output models/cvae_keypoint_push
 ```
@@ -86,3 +90,4 @@ Finally, `cd KETO` and see the performance of your own model by running
 ```bash
 sh scripts/run_push_test.sh
 ```
+
