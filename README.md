@@ -7,7 +7,7 @@ Clone this repository
 git clone https://github.com/XXX/keto.git 
 ```
 
-Download and extract [data.tar.gz] in `keto` and [models.tar.gz] in `keto/keypoints`. Then the directory should contain `keto/data` and `keto/keypoints/models`. Create a clean virtual environment with Python 3.6. If you are using Anaconda, you could run `conda create -n keto python=3.6` to create an environment named keto and activate this environment by `conda activate keto`. 
+Denote the repository path as `KETO`. Download and extract [data.tar.gz] in `KETO` and [models.tar.gz] in `KETO/keypoints`. Then the directory should contain `KETO/data` and `KETO/keypoints/models`. Create a clean virtual environment with Python 3.6. If you are using Anaconda, you could run `conda create -n keto python=3.6` to create an environment named keto and activate this environment by `conda activate keto`. `cd KETO` and execute commands as the followings.
 
 Install the dependencies:
 ```bash
@@ -15,6 +15,7 @@ python setup.py
 ```
 
 ### Quick Demo
+
 Run pushing:
 ```bash
 sh scripts/run_push_test.sh
@@ -37,21 +38,51 @@ Run the random grasping policy to collect training data:
 ```bash
 sh scripts/run_grasp_random.sh
 ```
-In the experiment, we ran 300 copies of `run_grasp_random.sh` in parallel on machines with over 300 cpu cores, collecting 100K episodes. The data will be saved to `episodes/grasp_4dof_random/grasp`, including the grasp location, rotation and a binary value indicating whether the grasp succeeded. We store the collected data in a single hdf5 file to boost the data access in training:
+In the experiment, we ran 300 copies of `run_grasp_random.sh` in parallel on machines with over 300 CPU cores, collecting 100K episodes. GPUs are unnecessary here, since the running time is mostly consumed by CPUs. The data will be saved to `episodes/grasp_4dof_random/grasp`, including the grasp location, rotation and a binary value indicating whether the grasp succeeded. We store the collected data in a single hdf5 file to boost the data access in training:
 ```bash
 cd keypoints && mkdir data && python utils/grasp/make_inputs_multiproc.py --point_cloud ../episodes/grasp_4dof_random/point_cloud --grasp ../episodes/grasp_4dof_random/grasp --save data/data_grasp.hdf5
 ```
 
-Train the variational autoencoder (VAE) that generates grasp proposals from the input point cloud:
+Train the variational autoencoder (VAE):
 ```bash
 python main.py --mode vae_grasp --data_path data/data_grasp.hdf5 --gpu GPU_ID
 ```
-Train the binary classifier that scores the proposals to select the best grasp as output:
+Train the grasp evaluation network:
 ```bash
 python main.py --mode gcnn_grasp --data_path data/data_grasp.hdf5 --gpu GPU_ID
 ```
-Merge the VAE and the classifier to a single checkpoint:
+The VAE can generate grasp candidates from the input point cloud, while the evaluation network can score the quality of the candidates. The above two commands are independent and can be run in parallel to save time. After training, we merge the VAE and the evaluator as a single checkpoint:
 ```bash
-python merge.py --model grasp --vae runs/vae/vae_60000 --discr runs/gcnn/gcnn_60000 --output runs/cvae_grasp
+python merge.py --model grasp --vae runs/vae/vae_60000 --discr runs/gcnn/gcnn_60000 --output models/cvae_grasp
 ```
 
+#### Keypoint Prediction
+Each of the three tasks needs its own keypoint prediction model. Here we take the pushing task as an example. The training procedure for other tasks are the same. `cd KETO` and start from collecting the training data using heuristic keypoint predictor:
+```bash
+sh scripts/run_push_random.sh
+```
+where we collect 100K episodes of data. `run_push_random.sh` relies on the grasping model `keypoints/models/cvae_grasp` that we saved just now to predict grasps from the observation. It no longer uses the random grasping policy. After data collection, we store all the data in a single hdf5 file:
+```bash
+cd keypoints && python utils/keypoint/make_inputs_multiproc.py --point_cloud ../episodes/push_point_cloud/point_cloud --keypoints ../episodes/push_point_cloud/keypoints --save data/data_push.hdf5
+``` 
+
+Train the VAE:
+```bash
+python main.py --mode vae_keypoint --data_path data/data_push.hdf5 --gpu GPU_ID
+```
+Train the keypoint evaluation network:
+```bash
+python main.py --mode discr_keypoint --data_path data/data_push.hdf5 --gpu GPU_ID
+```
+The VAE can produce keypoint candidates from the input point cloud, while the evaluation network can score the candidates to select the best one as output. The above two commands can be run in parallel to save time. After training, we merge the VAE and the evaluator as a keypoint predictor for the pushing task:
+```bash
+python merge.py --model keypoint --vae runs/vae/vae_keypoint_push_120000 --discr runs/discr/discr_keypoint_push_120000 --output models/cvae_keypoint_push
+```
+Merge the grasp predictor and the keypoint predictor to obtain the final model:
+```bash
+python merge.py --model grasp_keypoint --grasp models/cvae_grasp --keypoint models/cvae_keypoint_push --output models/cvae_push
+```
+Finally, `cd KETO` and see the performance of your own model by running 
+```bash
+sh scripts/run_push_test.sh
+```
