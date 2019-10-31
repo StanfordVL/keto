@@ -4,6 +4,8 @@
 
 ![overview](docs/overview.png)
 
+[arXiv](https://arxiv.org/abs/1910.11977)
+
 ### Prerequisite
 
 CUDA 10.0
@@ -75,11 +77,7 @@ sh scripts/run_push_random.sh
 ```
 where we collect 100K episodes of data. `run_push_random.sh` relies on the grasping model `keypoints/models/cvae_grasp` that we saved just now to predict grasps from the observation. It no longer uses the random grasping policy. After data collection, we store all the data in a single hdf5 file:
 ```bash
-cd keypoints
-```
-
-```bash
-python utils/keypoint/make_inputs_multiproc.py --point_cloud ../episodes/push_point_cloud/point_cloud --keypoints ../episodes/push_point_cloud/keypoints --save data/data_push.hdf5
+cd keypoints && python utils/keypoint/make_inputs_multiproc.py --point_cloud ../episodes/push_point_cloud/point_cloud --keypoints ../episodes/push_point_cloud/keypoints --save data/data_push.hdf5
 ``` 
 
 Train the VAE:
