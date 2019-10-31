@@ -4,11 +4,15 @@
 
 ![overview](docs/overview.png)
 
+### Prerequisite
+
+CUDA 10.0
+
 ### Install
 
 Clone this repository
 ```bash
-git clone https://github.com/XXX/keto.git 
+git clone -b release https://github.com/kuanfang/kptog.git
 ```
 
 Denote the repository path as `KETO`. Download and extract [data.tar.gz](https://cloud.tsinghua.edu.cn/f/2375b7da83b44db8aaff/?dl=1) in `KETO` and [models.tar.gz](https://cloud.tsinghua.edu.cn/f/39abcf2cf120486fa191/?dl=1) in `KETO/keypoints`. Then the directory should contain `KETO/data` and `KETO/keypoints/models`. Create a clean virtual environment with Python 3.6. If you are using Anaconda, you could run `conda create -n keto python=3.6` to create an environment named keto and activate this environment by `conda activate keto`. `cd KETO` and execute commands as the followings.
@@ -44,7 +48,11 @@ sh scripts/run_grasp_random.sh
 ```
 In the experiment, we ran 300 copies of `run_grasp_random.sh` in parallel on machines with over 300 CPU cores, collecting 100K episodes. GPUs are unnecessary here, since the running time is mostly consumed by CPUs. The data will be saved to `episodes/grasp_4dof_random`, including the grasp location, rotation and a binary value indicating whether the grasp succeeded, as well as the point cloud input associated with each grasp. We store the collected data in a single hdf5 file to boost the data access in training:
 ```bash
-cd keypoints && mkdir data && python utils/grasp/make_inputs_multiproc.py --point_cloud ../episodes/grasp_4dof_random/point_cloud --grasp ../episodes/grasp_4dof_random/grasp --save data/data_grasp.hdf5
+cd keypoints && mkdir data
+```
+
+```bash
+python utils/grasp/make_inputs_multiproc.py --point_cloud ../episodes/grasp_4dof_random/point_cloud --grasp ../episodes/grasp_4dof_random/grasp_4dof --save data/data_grasp.hdf5
 ```
 
 Train the variational autoencoder (VAE):
@@ -67,7 +75,11 @@ sh scripts/run_push_random.sh
 ```
 where we collect 100K episodes of data. `run_push_random.sh` relies on the grasping model `keypoints/models/cvae_grasp` that we saved just now to predict grasps from the observation. It no longer uses the random grasping policy. After data collection, we store all the data in a single hdf5 file:
 ```bash
-cd keypoints && python utils/keypoint/make_inputs_multiproc.py --point_cloud ../episodes/push_point_cloud/point_cloud --keypoints ../episodes/push_point_cloud/keypoints --save data/data_push.hdf5
+cd keypoints
+```
+
+```bash
+python utils/keypoint/make_inputs_multiproc.py --point_cloud ../episodes/push_point_cloud/point_cloud --keypoints ../episodes/push_point_cloud/keypoints --save data/data_push.hdf5
 ``` 
 
 Train the VAE:
@@ -90,4 +102,16 @@ Finally, `cd KETO` and see the performance of your own model by running
 ```bash
 sh scripts/run_push_test.sh
 ```
+For training other two tasks, you could simply replace push with reach or hammer in the above commands.
 
+
+### Citation
+```bash
+@misc{qin2019keto,
+    title={KETO: Learning Keypoint Representations for Tool Manipulation},
+    author={Zengyi Qin and Kuan Fang and Yuke Zhu and Li Fei-Fei and Silvio Savarese},
+    year={2019},
+    eprint={1910.11977},
+    archivePrefix={arXiv},
+}
+```

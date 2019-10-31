@@ -172,10 +172,8 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             [g_rz]],
             axis=0)
 
-        reach_distance = 0.0 if self.is_training else 0.1 * force
-
         target_pose = tf.concat([
-            g_xy + reach_distance, tf.constant([0.18], dtype=tf.float32),
+            g_xy, tf.constant([0.18], dtype=tf.float32),
             [g_rz]],
             axis=0)
 

@@ -111,6 +111,7 @@ class TrajectoryWriter(object):
 
     def __call__(self, trajectory):
         self.write(trajectory)
+        self._num_calls = self._num_calls + 1
         return
 
     def write(self, trajectory):
