@@ -35,12 +35,15 @@ data_sublists = [data_list[x:x + batch_size]
                  for x in range(0, len(data_list), batch_size)]
 
 class Logger(object):
+    """Logging utils."""    
 
     def __init__(self, output='./output.log'):
+        """Initialization."""
         self.output = output
         return
 
     def write(self, message):
+        """Writes the message to the log file."""
         with open(self.output, 'a') as f:
             f.write(message + '\r\n')
         return
@@ -55,7 +58,23 @@ def save_data(pos_point_cloud,
               neg_grasp,
               save_path,
               scale=20):
+    """Saves the data to hdf5 file.
 
+    Args: 
+        pos_point_cloud: The point cloud associated 
+            associated with the positive grasps.
+        neg_point_cloud: The point cloud associated 
+            associated with the negative grasps.
+        pos_grasp: The positive grasps.
+        neg_grasp: The negative grasps.
+        save_path: The hdf5 file name.
+        scale: The constant to be multiplied with the
+            point cloud and grasp coordinates to fit 
+            the input scale of the network.
+
+    Returns:
+        None.
+    """
     scale_grasp = np.reshape([scale, scale, scale, 1, 1, 1], (1, 6))
 
     pos_point_cloud = np.concatenate(pos_point_cloud, axis=0) * scale
@@ -111,6 +130,16 @@ def save_data(pos_point_cloud,
 
 
 def append_data(data_list, lock, save_path='./data.hdf5'):
+    """Appends data to a hdf5 file.
+
+    Args:
+        data_list: The list of data to be saved.
+        lock: The lock to avoid io conflict.
+        save_path: The path to hdf5 file.
+        
+    Returns:
+        None.
+    """
     pos_point_cloud = []
     neg_point_cloud = []
     pos_grasp = []
@@ -128,8 +157,6 @@ def append_data(data_list, lock, save_path='./data.hdf5'):
             grasp_4dof = np.load(f)
 
         grasp = grasp_4dof
-
-        lock.acquire()
         if grasp[0] > 0:
             pos_point_cloud.append(
                 point_cloud[np.newaxis])
@@ -141,7 +168,6 @@ def append_data(data_list, lock, save_path='./data.hdf5'):
             neg_grasp.append(grasp[np.newaxis, 1:])
         else:
             pass
-        lock.release()
 
     lock.acquire()
     save_data(pos_point_cloud,

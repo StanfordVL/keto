@@ -123,50 +123,6 @@ class KeypointEncoder(Network):
             z = tf.concat([miu, sigma_sp], axis=1)
         return z
 
-
-class ActionEncoder(Network):
-
-    def build_model(self, x, ats):
-        """Builds the vae keypoint encoder
-
-        Args:
-            x: (B, N, 1, 3) Input point cloud
-            ats: [(B, 1, 3), (B, 1, 3), (B, 1, 3)] Actions
-
-        Returns:
-            z: (B, 2*D) Mean and var of the latent
-            variable with dimension D
-
-        """
-
-        with tf.variable_scope('vae_action_encoder',
-                               reuse=tf.AUTO_REUSE):
-
-            mean_x = tf.reduce_mean(x,
-                                    axis=1, keepdims=True)
-            x = x - mean_x
-            mean_r = tf.reduce_mean(
-                tf.linalg.norm(
-                    x, axis=3, keepdims=True),
-                axis=1, keepdims=True)
-            x = x / (mean_r + 1e-6)
-
-            grasp, trans, rot = ats
-            grasp = grasp - tf.squeeze(mean_x, [1, 2])
-            a = tf.concat([grasp, trans, rot], axis=1)
-
-            x = self.conv_layer(x, 16, name='conv1_1')
-            x = self.conv_layer(x, 16, name='conv1_2')
-
-            x = self.conv_layer(x, 32, name='conv2_1')
-            x = self.conv_layer(x, 32, name='conv2_2')
-
-            x = self.conv_layer(x, 32, name='conv5_1')
-            x = self.conv_layer(x, 256, name='conv5_2')
-
-            x = tf.reduce_max(x, axis=[1, 2], keepdims=False)
-            x = tf.concat([x, a], axis=1)
-
             x = self.fc_layer(x, 256, name='fc1')
             x = self.fc_layer(x, 256, name='fc2')
             z = self.fc_layer(x, 4, linear=True, name='out')

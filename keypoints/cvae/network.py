@@ -2,11 +2,13 @@ import tensorflow as tf
 
 
 class Network(object):
+    """The base class of neural networks."""
 
     def __init__(self):
         return
 
     def batch_norm_layer(self, x, eps=0.01):
+        """Batch normalization."""
         dimension = x.get_shape().as_list()[-1]
         mean, variance = tf.nn.moments(x, axes=[0, 1, 2])
         beta = tf.get_variable(
@@ -31,6 +33,19 @@ class Network(object):
     def conv_layer(self, x, out_channels,
                    kernel_size=1, dilation=1,
                    linear=False, name=None):
+        """The convolution layer.
+
+        Args:
+            x: The input feature map.
+            out_channels: The output channels.
+            kernel_size: The size of the convolution kernel.
+            dilation: The dilation rate.
+            linear: If True, return without batch normalization or relu.
+            name: The name scope of the variables.
+
+        Returns:
+            x: The output feature map.
+        """
         with tf.variable_scope(name):
             x = tf.layers.conv2d(
                 x, out_channels,
@@ -45,6 +60,17 @@ class Network(object):
 
     def fc_layer(self, x, out_size,
                  linear=False, name=None):
+        """The fully connected layer.
+
+        Args: 
+            x: The input units.
+            out_size: The size of the output units.
+            linear: If True, relu will not be applied.
+            name: The name scope of the variables.
+        
+        Returns:
+            x: The output units.
+        """
         with tf.variable_scope(name):
             x = tf.contrib.layers.flatten(x)
             x = tf.contrib.layers.fully_connected(
@@ -55,6 +81,7 @@ class Network(object):
             return x
 
     def max_pool(self, x, ksize, stride, name):
+        """The maxpooling layer."""
         with tf.variable_scope(name):
             x = tf.contrib.layers.max_pool2d(
                 x, kernel_size=ksize,
@@ -62,6 +89,22 @@ class Network(object):
             return x
 
     def down_sample(self, x, p, stride, thres, name):
+        """Down samples the point cloud feature maps.
+
+        Args:
+            x: The point cloud features from the last layer.
+            p: The points where the feautures come from.
+            stride: The down sample stride. The central points
+                are chosen from p at this stride.
+            thres: For each central point, the surrounding points
+                within this distance threshold are considered in
+                the average pooling.
+            name: The name of this operation.
+
+        Returns:
+            x: The point cloud features after down sampling.
+            new_p: The points where the new features come from.
+        """      
         with tf.variable_scope(name):
             print('Original shape {}'.format(
                 x.get_shape().as_list()))
@@ -90,6 +133,7 @@ class Network(object):
             return x, new_p
 
     def concat_xz(self, x, z):
+        """Concatenates the point cloud and the latent code."""
         _, n, _, _ = x.get_shape().as_list()
         z_n = tf.tile(z, [1, n, 1, 1])
         return tf.concat([x, z_n], axis=3)

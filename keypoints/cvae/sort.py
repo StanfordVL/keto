@@ -3,11 +3,13 @@ import tensorflow as tf
 
 
 def sort_tf(x, is_training=tf.constant(False, dtype=tf.bool)):
-    """ Sort the point cloud wrt. the priciple dimension
-        input:
-            x: (B, N, 3)
-        return:
-            y: (B, N, 3)
+    """ Sorts the point cloud wrt. the priciple dimension.
+    
+    Args:
+        x: (B, N, 3) The point cloud.
+    
+    Returns:
+        y: (B, N, 3) The sorted point cloud.
     """
     x_mean = tf.reduce_mean(
         x, axis=1, keep_dims=True)
@@ -34,11 +36,13 @@ def sort_tf(x, is_training=tf.constant(False, dtype=tf.bool)):
 
 
 def std(v):
-    """
-        input:
-            v: (B, 1, 3)
-        return:
-            o: (1, 1, 3)
+    """Computes the standard deviation.
+
+    Args:
+        v: (B, 1, 3) The input data.
+
+    Returns:
+        o: (1, 1, 3) The std wrt. the first axis.
     """
     v = v - tf.reduce_mean(v, axis=0, keep_dims=True)
     o = tf.reduce_mean(v * v, axis=0, keep_dims=True)
@@ -47,11 +51,13 @@ def std(v):
 
 
 def random_noise(v, std_ratio=0.5):
-    """
-        input:
-            v: (B, 1, 3)
-        return:
-            vn: (B, 1, 3)
+    """Adds random noise to unit vectors.
+
+    Args:
+        v: (B, 1, 3) The input unit vectors.
+
+    Returns:
+        vn: (B, 1, 3) The unit vectors with noise.
     """
     r = tf.random_normal(
         shape=tf.shape(v)) * std(v) * std_ratio
@@ -62,6 +68,16 @@ def random_noise(v, std_ratio=0.5):
 
 
 def rotation_matrix(alpha, beta, gamma):
+    """Computes the rotation matrix.
+
+    Args:
+        alpha: The rotation around x axis.
+        beta: The rotation around y axis.
+        gamma: The rotation around z axis.
+
+    Returns:
+        The rotation matrix.
+    """
     Rx = np.array([[1, 0, 0],
                    [0, np.cos(alpha), -np.sin(alpha)],
                    [0, np.sin(alpha), np.cos(alpha)]])
@@ -76,13 +92,15 @@ def rotation_matrix(alpha, beta, gamma):
 
 
 def rot_mat(rx, ry, rz):
-    """ Compute rotation matrics
-        input:
-            rx: (B, 1)
-            ry: (B, 1)
-            rz: (B, 1)
-        return:
-            R: (B, 3, 3)
+    """Computes a batch of rotation matrices.
+
+    Args:
+        rx: (B, 1) The rotation around x axis.
+        ry: (B, 1) The rotation around y axis.
+        rz: (B, 1) The rotation around z axis.
+
+    Returns:
+        R: (B, 3, 3) The rotation matrix.
     """
     zeros = tf.zeros_like(rx)
     ones = tf.ones_like(rx)
@@ -106,12 +124,14 @@ def rot_mat(rx, ry, rz):
 
 
 def align(x, p):
-    """ Align the point cloud wrt. 6-DoF grasp
-        input:
-            x: (B, N, 3)
-            p: (B, 6)
-        return:
-            y: (B, N, 3)
+    """ Aligns the point cloud wrt. 6-DoF grasp.
+    
+    Args:
+        x: (B, N, 3) The input point cloud.
+        p: (B, 6) The 6-DoF grasps.
+    
+    Returns:
+        y: (B, N, 3) The aligned point cloud.
     """
     c, rx, ry, rz = tf.split(p, [3, 1, 1, 1], axis=1)
     R = rot_mat(-rx, -ry, -rz)

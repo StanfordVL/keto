@@ -1,10 +1,21 @@
+"""The decoders of the variational encoders (VAE)."""
 import tensorflow as tf
 from cvae.network import Network
 
 
 class GraspDecoder(Network):
+    """The grasp decoder."""
 
     def build_model(self, x, z):
+        """Builds the model graph.
+
+        Args: 
+            x: The point cloud tensor.
+            z: The latent code parameters.
+
+        Returns:
+            g: The generated grasps.
+        """
         with tf.variable_scope('vae_grasp_decoder',
                                reuse=tf.AUTO_REUSE):
 
@@ -56,9 +67,25 @@ class GraspDecoder(Network):
 
 
 class KeypointDecoder(Network):
+    """The keypoint decoder."""
 
     def build_model(self, x, z, nv=0, 
                     truncated_normal=False):
+        """Builds the model graph.
+
+        Args:
+            x: The point cloud tensor.
+            z: The latent code parameters.
+            nv: The number of vectors pointing from
+                the function point to the effect point.
+            truncated_normal: Whether to use the truncated
+                normal distribution to sample random seeds.
+
+        Returns:
+            keypoints: The generated grasp point and function point.
+            funct_vect: The generated vectors pointing from the 
+                function point to the effect point.
+        """
         with tf.variable_scope('vae_keypoint_decoder',
                                reuse=tf.AUTO_REUSE):
 
@@ -123,47 +150,3 @@ class KeypointDecoder(Network):
                          functional_keypoints]
             keypoints = [tf.squeeze(k, 2) for k in keypoints]
         return keypoints, funct_vect
-
-
-class ActionDecoder(Network):
-
-    def build_model(self, x, z):
-        with tf.variable_scope('vae_action_decoder',
-                               reuse=tf.AUTO_REUSE):
-            miu, sigma = tf.split(z, 2, axis=1)
-            z = miu + sigma * tf.random.truncated_normal(
-                    tf.shape(sigma), 0.0, 1.0)
-            _, z_dim = z.get_shape().as_list()
-            z = tf.reshape(z, [-1, 1, 1, z_dim])
-
-            mean_x = tf.reduce_mean(x,
-                                    axis=1, keepdims=True)
-            x = x - mean_x
-            p = x
-
-            x = self.conv_layer(x, 16, name='conv1_1')
-            x = self.conv_layer(x, 16, name='conv1_2')
-            x = self.concat_xz(x, z)
-
-            x = self.conv_layer(x, 32, name='conv2_1')
-            x = self.conv_layer(x, 32, name='conv2_2')
-            x = self.concat_xz(x, z)
-
-            x = self.conv_layer(x, 64, name='conv3_1')
-            x = self.conv_layer(x, 256, name='conv3_2')
-            x, p = self.down_sample(x, p, 64, 0.7, 'down_sample')
-
-            x_a = self.conv_layer(x, 256, name='conv6_1')
-            x_a = tf.reduce_max(x_a, axis=1, keepdims=True)
-            grasp = self.conv_layer(x_a, 3, name='conv6_2',
-                                    linear=True) + mean_x
-            trans = self.conv_layer(x_a, 2, name='conv6_3',
-                                    linear=True)
-            rot = self.conv_layer(x_a, 2, name='conv6_4',
-                                  linear=True)
-            grasp = tf.squeeze(grasp, axis=[1, 2])
-            trans = tf.squeeze(trans, axis=[1, 2])
-            rot = tf.squeeze(rot, axis=[1, 2])
-
-        return grasp, trans, rot
-
