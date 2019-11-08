@@ -1,4 +1,4 @@
-"""Grasping policies."""
+"""Hammering policies."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -41,8 +41,12 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                  config=None,
                  debug=False,
                  is_training=True):
-        """Initialization"""
-
+        """Initialization.
+        
+        Args:
+            time_step_spec: A `TimeStep` spec of the expected time_steps.
+            action_spec: A nest of BoundedTensorSpec representing the actions.
+        """
         super(HammerPointCloudPolicy, self).__init__(
             time_step_spec,
             action_spec,
