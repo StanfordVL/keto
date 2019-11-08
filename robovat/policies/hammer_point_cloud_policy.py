@@ -20,6 +20,7 @@ nest = tf.contrib.framework.nest
 
 
 class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
+    """Predicts the hammering actions from point cloud"""
 
     TARGET_REGION = {
         'x': 0.2,
@@ -40,6 +41,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                  config=None,
                  debug=False,
                  is_training=True):
+        """Initialization"""
 
         super(HammerPointCloudPolicy, self).__init__(
             time_step_spec,
@@ -59,6 +61,7 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             dtype=np.float32)
 
     def _concat_actions(self, actions, num_dof=4):
+        """Concatenates the tool pose for each step."""
         actions = tf.expand_dims(
             tf.concat(
                 [tf.reshape(action, [-1, num_dof])
@@ -70,6 +73,14 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return np.pi / 2
 
     def _rot_mat(self, rz):
+        """Computes the rotation matrix around the z axis.
+        
+        Args:
+            rz: The rotation around z axis.
+        
+        Returns:
+            mat: The rotation matrix.
+        """
         zero = tf.constant(0.0,
                            dtype=tf.float32)
         one = tf.constant(1.0,
@@ -82,6 +93,16 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return mat
 
     def _keypoints_heuristic(self, point_cloud_tf):
+        """Uses the heuristic policy to predict keypoints.
+        
+        Args:
+            point_cloud_tf: The point cloud tensor.
+            
+        Returns:
+            g_kp: The grasp point.
+            f_kp: The function point.
+            f_v: The vector pointing from the function point to effect point.
+        """
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using heuristic policy')
 
@@ -91,6 +112,16 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return g_kp, f_kp, f_v
 
     def _keypoints_network(self, point_cloud_tf, scale=20):
+        """Uses the neural network policy to predict keypoints.
+        
+        Args:
+            point_cloud_tf: The point cloud tensor.
+            
+        Returns:
+            g_kp: The grasp point.
+            f_kp: The function point.
+            f_v: The vector pointing from the function point to effect point.
+        """
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using network policy')
         keypoints, f_v, score = forward_keypoint(
@@ -108,6 +139,18 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 policy_state,
                 seed,
                 scale=20):
+        """Predicts the actions from visual observation.
+        
+        Args:
+            time_step: A batch of timesteps.
+            policy_state: The current policy state.
+            seed: A random seed.
+            scale: A constant coefficient that the point cloud coordinates 
+                should be multiplied with to fit the input scale of the network.
+
+        Returns:
+            The grasp, action waypoints and the keypoints.
+        """
         point_cloud_tf = time_step.observation['point_cloud']
 
         if self.is_training:
