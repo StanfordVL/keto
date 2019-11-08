@@ -122,12 +122,3 @@ class KeypointEncoder(Network):
             sigma_sp = tf.nn.softplus(sigma)
             z = tf.concat([miu, sigma_sp], axis=1)
         return z
-
-            x = self.fc_layer(x, 256, name='fc1')
-            x = self.fc_layer(x, 256, name='fc2')
-            z = self.fc_layer(x, 4, linear=True, name='out')
-
-            miu, sigma = tf.split(z, 2, axis=1)
-            sigma_sp = tf.nn.softplus(sigma)
-            z = tf.concat([miu, sigma_sp], axis=1)
-        return z
