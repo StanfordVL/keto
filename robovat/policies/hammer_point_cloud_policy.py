@@ -116,6 +116,8 @@ class HammerPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         
         Args:
             point_cloud_tf: The point cloud tensor.
+            scale: A constant coefficient that the point cloud coordinates 
+                should be multiplied with to fit the input scale of the network.
             
         Returns:
             g_kp: The grasp point.
