@@ -21,7 +21,7 @@ Denote the repository path as `KETO`. Download and extract [data.tar.gz](https:/
 
 Install the dependencies:
 ```bash
-python setup.py
+pip install -r requirements.txt
 ```
 
 ### Quick Demo
