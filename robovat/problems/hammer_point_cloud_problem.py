@@ -1,4 +1,4 @@
-"""DexNet Problem.
+"""Hammering Point Cloud Problem.
 """
 
 from __future__ import absolute_import
@@ -59,7 +59,7 @@ def grasps_to_inputs(point_cloud, grasps):
 
 
 class HammerPointCloudProblem(problem.Problem):
-    """DexNet Problem."""
+    """Hammering Point Cloud Problem."""
 
     def __init__(self,
                  time_step_spec,
