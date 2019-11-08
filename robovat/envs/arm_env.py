@@ -358,14 +358,14 @@ class ReachArmEnv(ArmEnv):
             'yaw': np.pi/2}]
 
     WALL_REGION_1 = [{
-            'x': 0.15,
+            'x': 0.14,
             'y': 0.25,
             'z': 0.05,
             'roll': 0,
             'pitch': 0,
             'yaw': np.pi/2},
             {
-            'x': 0.25,
+            'x': 0.26,
             'y': 0.25,
             'z': 0.05,
             'roll': 0,

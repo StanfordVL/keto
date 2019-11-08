@@ -1,12 +1,26 @@
+"""The evaluation networks."""
 import tensorflow as tf
 from cvae.sort import align
 from cvae.network import Network
 
 
 class GraspDiscriminator(Network):
+    """The grasp evaluation network."""
 
-    def build_model(self, x, g, keep_ratio=2,
+    def build_model(self, x, g,
                     aligned_point_cloud=False):
+        """Builds the model graph.
+
+        Args:
+            x: The point cloud tensor.
+            g: The grasp tensor.
+            aligned_point_cloud: Whether to return the
+                aligned point cloud.
+
+        Returns:
+            p: The grasp score.
+            aligned: The aligned point cloud.
+        """ 
         with tf.variable_scope('grasp_discriminator',
                                reuse=tf.AUTO_REUSE):
             x = tf.expand_dims(
@@ -38,8 +52,22 @@ class GraspDiscriminator(Network):
 
 
 class KeypointDiscriminator(Network):
+    """The keypoint evaluation network."""
 
     def build_model(self, x, ks, v=None):
+        """Builds the model graph.
+            
+        Args: 
+            x: The point cloud tensor.
+            ks: The list of keypoints.
+            v: The vector pointing from the function
+                point to the effect point.
+
+        Returns:
+            p: The keypoint evaluation score. A higher
+                score indicates a higher quality of the
+                predicted keypoints given the point cloud.
+        """
         with tf.variable_scope('keypoint_discriminator',
                                reuse=tf.AUTO_REUSE):
             g_kp, f_kp = [tf.squeeze(k, 1) for k in ks]
@@ -92,8 +120,20 @@ class KeypointDiscriminator(Network):
 
 
 class ActionDiscriminator(Network):
+    """The action evaluation network."""
 
     def build_model(self, x, ats):
+        """Builds the model graph.
+            
+        Args: 
+            x: The point cloud tensor.
+            ats: The grasp, translation and rotation of the action.
+
+        Returns:
+            p: The action evaluation score. A higher
+                score indicates a higher quality of the
+                predicted action given the point cloud.
+        """
         with tf.variable_scope('action_discriminator',
                                reuse=tf.AUTO_REUSE):
             grasp, trans, rot = ats

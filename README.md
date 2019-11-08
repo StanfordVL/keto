@@ -26,9 +26,9 @@ pip install -r requirements.txt
 
 ### Quick Demo
 
-Run pushing:
+Run hammering:
 ```bash
-sh scripts/run_push_test.sh
+sh scripts/run_hammer_test.sh
 ```
 
 Run reaching:
@@ -36,9 +36,9 @@ Run reaching:
 sh scripts/run_reach_test.sh
 ```
 
-Run hammering:
+Run pushing:
 ```bash
-sh scripts/run_hammer_test.sh
+sh scripts/run_push_test.sh
 ```
 
 ### Train from Scratch

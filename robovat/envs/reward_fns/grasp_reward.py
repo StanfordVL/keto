@@ -58,8 +58,6 @@ class GraspReward(reward_fn.RewardFn):
         else:
             self._update_history(success)
             success_rate = np.mean(self.history or [-1])
-            logger.debug('Grasp Success: %r, Success Rate %.3f',
-                         success, success_rate)
         return success, self.terminate_after_grasp
 
     def _check_cornercase(self):

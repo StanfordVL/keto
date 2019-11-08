@@ -6,7 +6,6 @@ import gym
 import numpy as np
 
 import pybullet
-import time
 
 from robovat.envs import arm_env
 from robovat.envs.observations import camera_obs
@@ -302,13 +301,13 @@ class ReachPointCloudEnv(arm_env.ReachArmEnv):
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            lateral_friction=1000,
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            lateral_friction=1000,
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.table.set_dynamics(
                             lateral_friction=1)
 
