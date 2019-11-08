@@ -1,4 +1,4 @@
-"""Grasping policies."""
+"""Reaching policies."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -21,7 +21,8 @@ nest = tf.contrib.framework.nest
 
 
 class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
-
+    """Predicts the reaching actions from point cloud"""
+    
     TARGET_REGION = {
         'x': 0.20,
         'y': 0.25,
@@ -41,7 +42,12 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                  config=None,
                  debug=False,
                  is_training=True):
-
+        """Initialization.
+        
+        Args:
+            time_step_spec: A `TimeStep` spec of the expected time_steps.
+            action_spec: A nest of BoundedTensorSpec representing the actions.
+        """
         super(ReachPointCloudPolicy, self).__init__(
             time_step_spec,
             action_spec,
@@ -55,6 +61,7 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         self.is_training = is_training
 
     def _concat_actions(self, actions, num_dof=4):
+        """Concatenates the tool pose for each step."""
         actions = tf.expand_dims(
             tf.concat(
                 [tf.reshape(action, [-1, num_dof])
@@ -63,6 +70,14 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return actions
 
     def _rot_mat(self, rz):
+        """Computes the rotation matrix around the z axis.
+        
+        Args:
+            rz: The rotation around z axis.
+        
+        Returns:
+            mat: The rotation matrix.
+        """
         zero = tf.constant(0.0,
                            dtype=tf.float32)
         one = tf.constant(1.0,
@@ -75,6 +90,16 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return mat
         
     def _keypoints_heuristic(self, point_cloud_tf):
+        """Uses the heuristic policy to predict keypoints.
+        
+        Args:
+            point_cloud_tf: The point cloud tensor.
+            
+        Returns:
+            g_kp: The grasp point.
+            f_kp: The function point.
+            f_v: The vector pointing from the function point to effect point.
+        """
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using heuristic policy')
 
@@ -84,6 +109,18 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return g_kp, f_kp, f_v
 
     def _keypoints_network(self, point_cloud_tf, scale=20):
+        """Uses the neural network policy to predict keypoints.
+        
+        Args:
+            point_cloud_tf: The point cloud tensor.
+            scale: A constant that the point cloud coordinates should be 
+                multiplied with to fit the input scale of the network.
+            
+        Returns:
+            g_kp: The grasp point.
+            f_kp: The function point.
+            f_v: The vector pointing from the function point to effect point.
+        """
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using network policy')
         keypoints, f_v, score = forward_keypoint(
@@ -103,6 +140,18 @@ class ReachPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 policy_state,
                 seed, 
                 scale=20):
+        """Predicts the actions from visual observation.
+        
+        Args:
+            time_step: A batch of timesteps.
+            policy_state: The current policy state.
+            seed: A random seed.
+            scale: A constant that the point cloud coordinates should be 
+                multiplied with to fit the input scale of the network.
+            
+        Returns:
+            The grasp, action waypoints and the keypoints.
+        """
         point_cloud_tf = time_step.observation['point_cloud']
         
         if self.is_training:
