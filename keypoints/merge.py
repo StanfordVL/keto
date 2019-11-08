@@ -1,3 +1,4 @@
+"""Merges the keypoints model and the grasping model."""
 import tensorflow as tf
 import argparse
 
@@ -51,6 +52,8 @@ with tf.Session() as sess:
     vars = tf.global_variables()
 
     if args.model in ['grasp', 'keypoint', 'action']:
+        # Merges the generation network (VAE) and 
+        # the evaluation network (binary classifier).
         vars_vae = [var for var in vars if 'vae' in var.name]
         vars_discr = [var for var in vars if 'discr' in var.name]
 
@@ -63,6 +66,7 @@ with tf.Session() as sess:
         saver.save(sess, args.output)
 
     elif args.model == 'grasp_keypoint':
+        # Merges the grasp prediction network and the keypoints network
         vars_grasp = [var for var in vars if 'grasp' in var.name]
         vars_keypoint = [var for var in vars if 'keypoint' in var.name]
 
@@ -75,6 +79,9 @@ with tf.Session() as sess:
         saver.save(sess, args.output)
 
     elif args.model == 'grasp_action':
+        # Merges the grasp prediction network and the action network
+        # This is only for the End-to-End baseline where we directly
+        # predict the actions from the visual observation.
         vars_grasp = [var for var in vars if 'grasp' in var.name]
         vars_action = [var for var in vars if 'action' in var.name]
 
