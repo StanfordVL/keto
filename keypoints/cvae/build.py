@@ -1,3 +1,4 @@
+"""Builds the grasp and keypoint prediction network."""
 import logging
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -26,6 +27,7 @@ def makedir(path):
 
 
 class RunningLog(object):
+    """Logging utils."""
 
     def __init__(self, filename):
         self.filename = filename
@@ -42,6 +44,16 @@ running_log = RunningLog('./runs/running_log')
 
 
 def rotation_matrix(alpha, beta, gamma):
+    """Computes the rotation matrix.
+    
+    Args:
+        alpha: The rotation around x axis.
+        beta: The rotation around y axis.
+        gamma: The rotation around z axis.
+        
+    Return:
+        R: The rotation matrix.
+    """
     Rx = np.array([[1, 0, 0],
                    [0, np.cos(alpha), -np.sin(alpha)],
                    [0, np.sin(alpha), np.cos(alpha)]])
@@ -57,6 +69,19 @@ def rotation_matrix(alpha, beta, gamma):
 
 def visualize(point_cloud, pose_rot, prefix, name,
               plot_lim=2, point_size=0.05):
+    """Visualizes the grasps on point cloud.
+    
+    Args:
+        point_cloud: A numpy array of the point cloud.
+        pose_rot: The location and rotation of the grasps.
+        prefix: The directory to save the figure.
+        name: The name of the figure.
+        plot_lim: The range of x and y axis of the plot.
+        point_size: The size of points when drawing the point cloud.
+        
+    Return:
+        None.
+    """
     fig = plt.figure(figsize=(10, 6))
     plot_num = 111
     xs = point_cloud[:, 0]
@@ -100,6 +125,19 @@ def visualize_keypoints(point_cloud,
                         name,
                         plot_lim=2,
                         point_size=0.5):
+    """Visualizes the keypoints on point cloud.
+    
+    Args:
+        point_cloud: A numpy array of the point cloud.
+        keypoints: A list of keypoints [grasp point, function point].
+        prefix: The directory to save the figure.
+        name: The name of the figure.
+        plot_lim: The range of x and y axis of the plot.
+        point_size: The size of points when drawing the point cloud.
+        
+    Return:
+        None.
+    """
     [grasp_point, funct_point] = keypoints
     fig = plt.figure(figsize=(18, 6))
     xs = point_cloud[:, 0]
@@ -139,7 +177,23 @@ def rectify_keypoints(point_cloud,
                       funct_on_hull,
                       grasp_clusters=12,
                       funct_clusters=12):
-
+    """Replaces the grasp point and the function point with
+       the nearest clustering center of the point cloud.
+       
+    Args:
+        point_cloud: A numpy array of point cloud.
+        grasp_point: The grasp point.
+        funct_point: The function point.
+        funct_on_hull: A bool indicating whether the function point 
+            should be on the convex hull of the clustering centers.
+        grasp_clusters: The number of clusters for rectifying the grasp point.
+        funct_clusters: The number of clusters for rectifying the function point.
+        
+    Returns:
+        grasp_point: The rectified grasp point.
+        funct_point: The rectified function point.
+    """
+       
     p = np.squeeze(point_cloud)
     kmeans = KMeans(
         n_clusters=grasp_clusters,
@@ -169,6 +223,17 @@ def rectify_keypoints(point_cloud,
 
 def success_recall(pose_pred, pose_ref,
                    loc_thres=0.1, cos_thres=0.9):
+    """Measures if a groud truth grasp is recalled.
+    
+    Args: 
+        pose_pred: The predicted grasp.
+        pose_ref: The ground truth grasp.
+        loc_thres: The Euler distance threshold to be satisfied.
+        cos_thres: The cosine distance threshold to be satisfied.
+        
+    Returns:
+        success: A bool indicating whether the ground truth is recalled.
+    """
     diff = pose_pred - pose_ref
     diff_loc = diff[:, :3]
     diff_rot = diff[:, 3:]
@@ -179,28 +244,19 @@ def success_recall(pose_pred, pose_ref,
     return success
 
 
-def depth_to_point_cloud_np(depth, focal=200):
-    _, h, w, _ = depth.shape()
-    x = np.arange(w).reshape((1, 1, w, 1)) - w * 0.5
-    y = np.arange(h).reshape((1, h, 1, 1)) - h * 0.5
-    X = depth * x / focal
-    Y = depth * y / focal
-    points = np.concatenate([X, Y, depth], axis=3)
-    points = np.reshape(points, (-1, h * w, 3))
-    return points
-
-
-def gripper_depth_to_init_pose(gripper_depth):
-    depth = gripper_depth.reshape((-1, 1))
-    zeros = np.zeros_like(depth)
-    pose = np.concatenate([zeros, zeros, depth,
-                           zeros, zeros, zeros],
-                          axis=1)
-    return pose
-
-
 def centralize_point_cloud(point_cloud,
                            gripper_pose, norm=False):
+    """Subtracts the mean point cloud from the point cloud and gripper pose.
+        
+    Args:
+        point_cloud: A numpy array of point cloud.
+        gripper_pose: A numpy array of the robot gripper pose.
+        norm: Whether to normalize the coordinates.
+        
+    Returns:
+        point_cloud_out: The centralized point cloud.
+        gripper_pose_out: The centralized gripper pose.
+    """
     center = np.mean(point_cloud, axis=1, keepdims=True)
     point_cloud_cent = point_cloud - center
     r = np.linalg.norm(point_cloud_cent, axis=2, keepdims=True)
@@ -220,6 +276,15 @@ def centralize_point_cloud(point_cloud,
 
 
 def pose_rot_to_vect(gripper_pose):
+    """Replaces the rotation with cosine and sine.
+        
+    Args:
+        gripper_pose: A tensor of gripper pose.
+       
+    Returns:
+        rot_vect: The gripper pose whose rotations 
+            are replaced with cosine and sine.
+    """
     loc, rot = tf.split(gripper_pose, [3, 3], axis=1)
     rx, ry, rz = tf.split(rot, [1, 1, 1], axis=1)
     rot_vect = tf.concat([loc, tf.cos(rx), tf.sin(rx),
@@ -230,6 +295,15 @@ def pose_rot_to_vect(gripper_pose):
 
 
 def pose_vect_to_rot(gripper_pose):
+    """Replaces the cosine and sine with the rotation.
+        
+    Args:
+        gripper_pose: A tensor of gripper pose.
+       
+    Returns:
+        pose_rot: The gripper pose where the cosine and
+            sine are replaced with rotation.
+    """
     [loc, rx_cos, rx_sin, ry_cos, ry_sin,
         rz_cos, rz_sin] = tf.split(gripper_pose,
                                    [3, 1, 1, 1, 1, 1, 1], axis=1)
@@ -242,6 +316,16 @@ def pose_vect_to_rot(gripper_pose):
 
 def reduce_std(x, axis=-1,
                keepdims=False):
+    """Computes the standard deviation.
+    
+    Args:
+        x: The input tensor.
+        axis: The axis on which we compute STD.
+        keepdims: If true, the axis will be kept.
+    
+    Return:
+        The standard deviation.
+    """
     x_c = x - tf.reduce_mean(x,
                              axis=axis, keepdims=True)
     std = tf.sqrt(tf.reduce_mean(
@@ -251,6 +335,14 @@ def reduce_std(x, axis=-1,
 
 
 def build_grasp_training_graph(num_points=1024):
+    """Builds the tensorflow graph for training the grasp model.
+    
+    Args: 
+        num_points: The number of points in one frame of point cloud.
+        
+    Return:
+        The training graph for the grasp model.
+    """
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_points, 3])
     pose_tf = tf.placeholder(dtype=tf.float32,
@@ -356,7 +448,19 @@ def build_grasp_training_graph(num_points=1024):
 def build_keypoint_training_graph(num_points=1024,
                                   num_grasp_point=1,
                                   num_funct_point=1,
-                                  num_funct_vect=0):
+                                  num_funct_vect=1):
+    """Builds the tensorflow graph for training the keypoint model.
+    
+    Args: 
+        num_points: The number of points in one frame of point cloud.
+        num_grasp_point: The number of grasp point.
+        num_funct_point: The number of function point.
+        num_funct_vect: The number of vectors pointing from the 
+            function point to the effect point.
+
+    Return:
+        The training graph for the keypoint prediction model.
+    """
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_points, 3])
     grasp_point_tf = tf.placeholder(dtype=tf.float32,
@@ -453,6 +557,16 @@ def build_keypoint_training_graph(num_points=1024,
 
 
 def build_action_training_graph(num_points=1024):
+    """Builds the tensorflow graph for training the action model.
+       This is only for the End-to-End baseline where we directly
+       predict the actions without the keypoint representations.
+    
+    Args: 
+        num_points: The number of points in one frame of point cloud.
+        
+    Return:
+        The training graph for the action model.
+    """
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_points, 3])
     grasp_point_tf = tf.placeholder(dtype=tf.float32,
@@ -545,10 +659,29 @@ def build_action_training_graph(num_points=1024):
 
 
 def get_learning_rate(step, steps, init=5e-4):
+    """Adjusts the learning rate in training.
+    
+    Args: 
+        step: The current step.
+        steps: The total steps in training.
+        init: The initial learning rate.
+        
+    Returns:
+        The learning rate.
+    """
     return init if step < steps * 0.8 else init * 0.1
 
 
 def build_grasp_inference_graph(num_points=1024, num_samples=128):
+    """Builds the inference graph for grasping.
+    
+    Args:
+        num_points: The number of points in point cloud.
+        num_samples: The number of samples from the grasp generator (VAE).
+        
+    Returns:
+        The inference graph.
+    """
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[1, num_points, 3])
     point_cloud = tf.tile(point_cloud_tf, [num_samples, 1, 1])
@@ -576,6 +709,17 @@ def build_grasp_inference_graph(num_points=1024, num_samples=128):
 def build_keypoint_inference_graph(num_points=1024,
                                    num_samples=128,
                                    num_funct_vect=0):
+    """Builds the inference graph for keypoints prediction.
+    
+    Args:
+        num_points: The number of points in point cloud.
+        num_samples: The number of samples from the keypoint generator (VAE).
+        num_funct_vect: The number of vectors pointing from the function 
+            point to the effect point.
+        
+    Returns:
+        The inference graph.
+    """
     point_cloud_tf = tf.placeholder(
         tf.float32, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -610,6 +754,18 @@ def build_keypoint_inference_graph(num_points=1024,
 
 def build_action_inference_graph(num_points=1024,
                                  num_samples=128):
+    """Builds the inference graph for action prediction.
+       This is only for the End-to-End baseline where we
+       directly predict the actions without the keypoint
+       representations.
+    
+    Args:
+        num_points: The number of points in point cloud.
+        num_samples: The number of samples from the action generator (VAE).
+        
+    Returns:
+        The inference graph.
+    """
     point_cloud_tf = tf.placeholder(
         tf.float32, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -637,6 +793,25 @@ def forward_grasp(point_cloud_tf,
                   num_samples=128,
                   dist_thres=0.3,
                   dist_kp_thres=0.4):
+    """A forward pass that predicts the best grasp from
+       the visual observation.
+       
+    Args:
+        point_cloud_tf: A tensor of point cloud.
+        grasp_keypoint: The grasp point. The grasp will be
+            chosen near the grasp point.
+        num_points: The number of points in the point cloud.
+        num_samples: The number of grasp candidates produced
+            by the grasp generator (VAE).
+        dist_thres: The maximum allowed Chamfer distance 
+            between the point cloud and the predicted grasp.
+        dist_kp_thres: The maximum allowed distance between 
+            the grasp point and the predicted the grasp.
+        
+    Returns:
+        top_action: The predicted grasp with the highest score.
+        top_score: The score of the predicted grasp.
+    """
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(
