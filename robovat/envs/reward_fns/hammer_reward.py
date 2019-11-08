@@ -21,6 +21,7 @@ class HammerReward(reward_fn.RewardFn):
                  streaming_length=1000):
         """Initialize."""
         self.name = name 
+
         self.graspable_name = graspable_name
         self.target_name = target_name
         self.terminate_after_grasp = terminate_after_grasp
@@ -67,6 +68,7 @@ class HammerReward(reward_fn.RewardFn):
         return success, self.terminate_after_grasp
 
     def _check_cornercase(self):
+        """The cornercases are ignored when we calculate the success rate"""
         is_cnc = self.env.timeout or self.env.grasp_cornercase
         if not self.env.is_training:
             is_cnc = is_cnc or not self.env.simulator.check_contact(
