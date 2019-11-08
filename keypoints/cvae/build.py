@@ -873,6 +873,22 @@ def forward_keypoint(point_cloud_tf,
                      dist_thres=0.4,
                      num_funct_vect=1,
                      funct_on_hull=True):
+    """A forward pass that predicts the keypoints from 
+       the visual observation.
+       
+    Args:
+        point_cloud_tf: A tensor of point cloud.
+        num_points: The number of points in the point cloud.
+        num_samples: The number of keypoint candidates 
+            produced by the keypoint generator.
+        num_funct_vect: The number of vectors pointing from
+            the function point to the effect point.
+        funct_on_hull: Whether the function point should on
+            the convex hull of the cluster centers of the 
+            point cloud.
+            
+    Returns:
+    """
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(
