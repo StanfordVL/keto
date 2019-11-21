@@ -41,16 +41,6 @@ Run pushing:
 sh scripts/run_push_test.sh
 ```
 
-Run tool generation:
-```bash
-cd keypoints/toolgen
-```
-Execute `hammer_gen.py`, `push_gen.py` or `reach_gen.py` to generate tools for three different tasks. For example, for hammering task you could run:
-```bash
-python hammer_gen.py
-```
-Results are shown in `KETO/keypoints/toolgen/visualize`.
-
 ### Train from Scratch
 
 #### Grasping
