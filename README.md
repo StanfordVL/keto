@@ -17,7 +17,7 @@ Clone this repository
 git clone -b release https://github.com/kuanfang/kptog.git
 ```
 
-Denote the repository path as `KETO`. Download and extract [data.tar.gz](https://cloud.tsinghua.edu.cn/f/2375b7da83b44db8aaff/?dl=1) in `KETO` and [models.tar.gz](https://cloud.tsinghua.edu.cn/f/39abcf2cf120486fa191/?dl=1) in `KETO/keypoints`. Then the directory should contain `KETO/data` and `KETO/keypoints/models`. Create a clean virtual environment with Python 3.6. If you are using Anaconda, you could run `conda create -n keto python=3.6` to create an environment named keto and activate this environment by `conda activate keto`. `cd KETO` and execute commands as the followings.
+Denote the repository path as `KETO`. Download and extract [data.tar.gz](https://drive.google.com/file/d/1ghMnjnFDDoQFxbgCaUnA83fO4wp23_5_/view?usp=sharing) in `KETO` and [models.tar.gz](https://drive.google.com/file/d/1B1oqaFiZf74hH_lKLjBTRaMktVjmKlKM/view?usp=sharing) in `KETO/keypoints`. Then the directory should contain `KETO/data` and `KETO/keypoints/models`. Create a clean virtual environment with Python 3.6. If you are using Anaconda, you could run `conda create -n keto python=3.6` to create an environment named keto and activate this environment by `conda activate keto`. `cd KETO` and execute commands as the followings.
 
 Install the dependencies:
 ```bash
