@@ -1,3 +1,4 @@
+"""Builds the grasp and keypoint prediction network."""
 import logging
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -7,25 +8,25 @@ import os
 from scipy.spatial import ConvexHull
 from sklearn.cluster import KMeans
 
-from cvae.reader import GraspReader, KeypointReader, ActionReader
-from cvae.encoder import GraspEncoder, KeypointEncoder, ActionEncoder
-from cvae.decoder import GraspDecoder, KeypointDecoder, ActionDecoder
+from cvae.reader import GraspReader, KeypointReader
+from cvae.encoder import GraspEncoder, KeypointEncoder
+from cvae.decoder import GraspDecoder, KeypointDecoder
 from cvae.discriminator import GraspDiscriminator, KeypointDiscriminator
-from cvae.discriminator import ActionDiscriminator
 
 import matplotlib as mpl
 mpl.use('Agg')
 
-
 logging.basicConfig(level=logging.DEBUG)
 
 
-def check(x):
-    print(np.sum(x))
-    return x
+def makedir(path):
+    if not os.path.exists(path):
+        os.mkdirs(path)
+    return
 
 
 class RunningLog(object):
+    """Logging utils."""
 
     def __init__(self, filename):
         self.filename = filename
@@ -42,6 +43,16 @@ running_log = RunningLog('./runs/running_log')
 
 
 def rotation_matrix(alpha, beta, gamma):
+    """Computes the rotation matrix.
+    
+    Args:
+        alpha: The rotation around x axis.
+        beta: The rotation around y axis.
+        gamma: The rotation around z axis.
+        
+    Return:
+        R: The rotation matrix.
+    """
     Rx = np.array([[1, 0, 0],
                    [0, np.cos(alpha), -np.sin(alpha)],
                    [0, np.sin(alpha), np.cos(alpha)]])
@@ -57,6 +68,19 @@ def rotation_matrix(alpha, beta, gamma):
 
 def visualize(point_cloud, pose_rot, prefix, name,
               plot_lim=2, point_size=0.05):
+    """Visualizes the grasps on point cloud.
+    
+    Args:
+        point_cloud: A numpy array of the point cloud.
+        pose_rot: The location and rotation of the grasps.
+        prefix: The directory to save the figure.
+        name: The name of the figure.
+        plot_lim: The range of x and y axis of the plot.
+        point_size: The size of points when drawing the point cloud.
+        
+    Return:
+        None.
+    """
     fig = plt.figure(figsize=(10, 6))
     plot_num = 111
     xs = point_cloud[:, 0]
@@ -100,6 +124,19 @@ def visualize_keypoints(point_cloud,
                         name,
                         plot_lim=2,
                         point_size=0.5):
+    """Visualizes the keypoints on point cloud.
+    
+    Args:
+        point_cloud: A numpy array of the point cloud.
+        keypoints: A list of keypoints [grasp point, function point].
+        prefix: The directory to save the figure.
+        name: The name of the figure.
+        plot_lim: The range of x and y axis of the plot.
+        point_size: The size of points when drawing the point cloud.
+        
+    Return:
+        None.
+    """
     [grasp_point, funct_point] = keypoints
     fig = plt.figure(figsize=(18, 6))
     xs = point_cloud[:, 0]
@@ -139,7 +176,26 @@ def rectify_keypoints(point_cloud,
                       funct_on_hull,
                       grasp_clusters=12,
                       funct_clusters=12):
-
+    """Replaces the grasp point and the function point with
+       the nearest clustering center of the point cloud.
+       
+    Args:
+        point_cloud: A numpy array of point cloud.
+        grasp_point: The grasp point.
+        funct_point: The function point.
+        funct_on_hull: A bool indicating whether the 
+            function point should be on the convex 
+            hull of the clustering centers.
+        grasp_clusters: The number of clusters for 
+            rectifying the grasp point.
+        funct_clusters: The number of clusters for 
+            rectifying the function point.
+        
+    Returns:
+        grasp_point: The rectified grasp point.
+        funct_point: The rectified function point.
+    """
+       
     p = np.squeeze(point_cloud)
     kmeans = KMeans(
         n_clusters=grasp_clusters,
@@ -169,6 +225,17 @@ def rectify_keypoints(point_cloud,
 
 def success_recall(pose_pred, pose_ref,
                    loc_thres=0.1, cos_thres=0.9):
+    """Measures if a groud truth grasp is recalled.
+    
+    Args: 
+        pose_pred: The predicted grasp.
+        pose_ref: The ground truth grasp.
+        loc_thres: The Euler distance threshold to be satisfied.
+        cos_thres: The cosine distance threshold to be satisfied.
+        
+    Returns:
+        success: A bool indicating whether the ground truth is recalled.
+    """
     diff = pose_pred - pose_ref
     diff_loc = diff[:, :3]
     diff_rot = diff[:, 3:]
@@ -179,28 +246,19 @@ def success_recall(pose_pred, pose_ref,
     return success
 
 
-def depth_to_point_cloud_np(depth, focal=200):
-    _, h, w, _ = depth.shape()
-    x = np.arange(w).reshape((1, 1, w, 1)) - w * 0.5
-    y = np.arange(h).reshape((1, h, 1, 1)) - h * 0.5
-    X = depth * x / focal
-    Y = depth * y / focal
-    points = np.concatenate([X, Y, depth], axis=3)
-    points = np.reshape(points, (-1, h * w, 3))
-    return points
-
-
-def gripper_depth_to_init_pose(gripper_depth):
-    depth = gripper_depth.reshape((-1, 1))
-    zeros = np.zeros_like(depth)
-    pose = np.concatenate([zeros, zeros, depth,
-                           zeros, zeros, zeros],
-                          axis=1)
-    return pose
-
-
 def centralize_point_cloud(point_cloud,
                            gripper_pose, norm=False):
+    """Subtracts the mean point cloud from the point cloud and gripper pose.
+        
+    Args:
+        point_cloud: A numpy array of point cloud.
+        gripper_pose: A numpy array of the robot gripper pose.
+        norm: Whether to normalize the coordinates.
+        
+    Returns:
+        point_cloud_out: The centralized point cloud.
+        gripper_pose_out: The centralized gripper pose.
+    """
     center = np.mean(point_cloud, axis=1, keepdims=True)
     point_cloud_cent = point_cloud - center
     r = np.linalg.norm(point_cloud_cent, axis=2, keepdims=True)
@@ -220,6 +278,15 @@ def centralize_point_cloud(point_cloud,
 
 
 def pose_rot_to_vect(gripper_pose):
+    """Replaces the rotation with cosine and sine.
+        
+    Args:
+        gripper_pose: A tensor of gripper pose.
+       
+    Returns:
+        rot_vect: The gripper pose whose rotations 
+            are replaced with cosine and sine.
+    """
     loc, rot = tf.split(gripper_pose, [3, 3], axis=1)
     rx, ry, rz = tf.split(rot, [1, 1, 1], axis=1)
     rot_vect = tf.concat([loc, tf.cos(rx), tf.sin(rx),
@@ -230,6 +297,15 @@ def pose_rot_to_vect(gripper_pose):
 
 
 def pose_vect_to_rot(gripper_pose):
+    """Replaces the cosine and sine with the rotation.
+        
+    Args:
+        gripper_pose: A tensor of gripper pose.
+       
+    Returns:
+        pose_rot: The gripper pose where the cosine and
+            sine are replaced with rotation.
+    """
     [loc, rx_cos, rx_sin, ry_cos, ry_sin,
         rz_cos, rz_sin] = tf.split(gripper_pose,
                                    [3, 1, 1, 1, 1, 1, 1], axis=1)
@@ -242,6 +318,16 @@ def pose_vect_to_rot(gripper_pose):
 
 def reduce_std(x, axis=-1,
                keepdims=False):
+    """Computes the standard deviation.
+    
+    Args:
+        x: The input tensor.
+        axis: The axis on which we compute STD.
+        keepdims: If true, the axis will be kept.
+    
+    Return:
+        The standard deviation.
+    """
     x_c = x - tf.reduce_mean(x,
                              axis=axis, keepdims=True)
     std = tf.sqrt(tf.reduce_mean(
@@ -251,6 +337,14 @@ def reduce_std(x, axis=-1,
 
 
 def build_grasp_training_graph(num_points=1024):
+    """Builds the tensorflow graph for training the grasp model.
+    
+    Args: 
+        num_points: The number of points in one frame of point cloud.
+        
+    Return:
+        The training graph for the grasp model.
+    """
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_points, 3])
     pose_tf = tf.placeholder(dtype=tf.float32,
@@ -356,7 +450,19 @@ def build_grasp_training_graph(num_points=1024):
 def build_keypoint_training_graph(num_points=1024,
                                   num_grasp_point=1,
                                   num_funct_point=1,
-                                  num_funct_vect=0):
+                                  num_funct_vect=1):
+    """Builds the tensorflow graph for training the keypoint model.
+    
+    Args: 
+        num_points: The number of points in one frame of point cloud.
+        num_grasp_point: The number of grasp point.
+        num_funct_point: The number of function point.
+        num_funct_vect: The number of vectors pointing from the 
+            function point to the effect point.
+
+    Return:
+        The training graph for the keypoint prediction model.
+    """
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[None, num_points, 3])
     grasp_point_tf = tf.placeholder(dtype=tf.float32,
@@ -452,103 +558,30 @@ def build_keypoint_training_graph(num_points=1024,
     return training_graph
 
 
-def build_action_training_graph(num_points=1024):
-    point_cloud_tf = tf.placeholder(dtype=tf.float32,
-                                    shape=[None, num_points, 3])
-    grasp_point_tf = tf.placeholder(dtype=tf.float32,
-                                    shape=[None, 3])
-    translation_tf = tf.placeholder(dtype=tf.float32,
-                                    shape=[None, 2])
-    rotation_tf = tf.placeholder(dtype=tf.float32,
-                                 shape=[None, 2])
-
-    actions = [grasp_point_tf, translation_tf, rotation_tf]
-    actions_label_tf = tf.placeholder(dtype=tf.float32,
-                                      shape=[None, 1])
-
-    latent_var = ActionEncoder().build_model(tf.reshape(
-        point_cloud_tf, (-1, num_points, 1, 3)), actions)
-    z_mean, z_std = tf.split(latent_var, 2, axis=1)
-    z = z_mean + z_std * tf.random.normal(tf.shape(z_std))
-    z_std = tf.reduce_mean(reduce_std(z, axis=1))
-    z_mean = tf.reduce_mean(z_mean)
-
-    actions_vae = ActionDecoder().build_model(tf.reshape(
-        point_cloud_tf, (-1, num_points, 1, 3)), latent_var)
-
-    [grasp_point_vae, translation_vae,
-     rotation_vae] = actions_vae
-
-    loss_vae_grasp = tf.reduce_mean(
-        tf.abs(grasp_point_vae - grasp_point_tf))
-
-    loss_vae_trans = tf.reduce_mean(
-        tf.abs(translation_vae - translation_tf))
-
-    loss_vae_rot = tf.reduce_mean(
-        tf.abs(rotation_vae - rotation_tf))
-
-    point_cloud_mean = tf.reduce_mean(
-        point_cloud_tf, axis=1)
-
-    std_gt_grasp = tf.reduce_mean(
-        reduce_std(grasp_point_tf -
-                   point_cloud_mean, axis=0))
-    std_gt_trans = tf.reduce_mean(reduce_std(
-        translation_tf - point_cloud_mean[:, :2], axis=0))
-
-    std_gt_rot = tf.reduce_mean(reduce_std(
-        rotation_tf, axis=0))
-
-    miu, sigma = tf.split(latent_var, 2, axis=1)
-    loss_vae_mmd = tf.reduce_mean(tf.square(miu) +
-                                  tf.square(sigma) -
-                                  tf.log(1e-8 + tf.square(sigma)) - 1)
-
-    discr_logit = ActionDiscriminator().build_model(
-        tf.reshape(point_cloud_tf, (-1, num_points, 1, 3)), actions)
-
-    loss_discr = tf.nn.sigmoid_cross_entropy_with_logits(
-        labels=actions_label_tf, logits=discr_logit)
-
-    loss_discr = tf.reduce_mean(loss_discr)
-
-    pred_label = tf.cast(tf.greater(tf.sigmoid(discr_logit), 0.5),
-                         tf.float32)
-    pred_equal_gt = tf.cast(tf.equal(pred_label,
-                                     actions_label_tf), tf.float32)
-
-    acc_discr = tf.reduce_mean(pred_equal_gt)
-
-    prec_discr = tf.math.divide(
-        tf.reduce_sum(pred_equal_gt * pred_label),
-        tf.reduce_sum(pred_label) + 1e-6)
-
-    training_graph = {'point_cloud_tf': point_cloud_tf,
-                      'grasp_point_tf': grasp_point_tf,
-                      'translation_tf': translation_tf,
-                      'rotation_tf': rotation_tf,
-                      'actions_label_tf': actions_label_tf,
-                      'loss_vae_grasp': loss_vae_grasp,
-                      'loss_vae_trans': loss_vae_trans,
-                      'loss_vae_rot': loss_vae_rot,
-                      'loss_vae_mmd': loss_vae_mmd,
-                      'z_mean': z_mean,
-                      'z_std': z_std,
-                      'std_gt_grasp': std_gt_grasp,
-                      'std_gt_trans': std_gt_trans,
-                      'std_gt_rot': std_gt_rot,
-                      'loss_discr': loss_discr,
-                      'acc_discr': acc_discr,
-                      'prec_discr': prec_discr}
-    return training_graph
-
-
 def get_learning_rate(step, steps, init=5e-4):
+    """Adjusts the learning rate in training.
+    
+    Args: 
+        step: The current step.
+        steps: The total steps in training.
+        init: The initial learning rate.
+        
+    Returns:
+        The learning rate.
+    """
     return init if step < steps * 0.8 else init * 0.1
 
 
 def build_grasp_inference_graph(num_points=1024, num_samples=128):
+    """Builds the inference graph for grasping.
+    
+    Args:
+        num_points: The number of points in point cloud.
+        num_samples: The number of samples from the grasp generator (VAE).
+        
+    Returns:
+        The inference graph.
+    """
     point_cloud_tf = tf.placeholder(dtype=tf.float32,
                                     shape=[1, num_points, 3])
     point_cloud = tf.tile(point_cloud_tf, [num_samples, 1, 1])
@@ -576,6 +609,17 @@ def build_grasp_inference_graph(num_points=1024, num_samples=128):
 def build_keypoint_inference_graph(num_points=1024,
                                    num_samples=128,
                                    num_funct_vect=0):
+    """Builds the inference graph for keypoints prediction.
+    
+    Args:
+        num_points: The number of points in point cloud.
+        num_samples: The number of samples from the keypoint generator (VAE).
+        num_funct_vect: The number of vectors pointing from the function 
+            point to the effect point.
+        
+    Returns:
+        The inference graph.
+    """
     point_cloud_tf = tf.placeholder(
         tf.float32, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -608,35 +652,31 @@ def build_keypoint_inference_graph(num_points=1024,
     return inference_graph
 
 
-def build_action_inference_graph(num_points=1024,
-                                 num_samples=128):
-    point_cloud_tf = tf.placeholder(
-        tf.float32, [1, num_points, 3])
-    point_cloud = tf.tile(
-        point_cloud_tf, [num_samples, 1, 1])
-    latent_var = tf.concat(
-        [tf.zeros([num_samples, 2], dtype=tf.float32),
-         tf.ones([num_samples, 2], dtype=tf.float32)],
-        axis=1)
-    actions_vae = ActionDecoder(
-    ).build_model(tf.reshape(point_cloud,
-                             (-1, num_points, 1, 3)),
-                  latent_var)
-
-    score = ActionDiscriminator().build_model(
-        tf.expand_dims(point_cloud, 2), actions_vae)
-    inference_graph = {'point_cloud_tf': point_cloud_tf,
-                       'actions': actions_vae,
-                       'score': score}
-    return inference_graph
-
-
 def forward_grasp(point_cloud_tf,
                   grasp_keypoint,
                   num_points=1024,
                   num_samples=128,
                   dist_thres=0.3,
                   dist_kp_thres=0.4):
+    """A forward pass that predicts the best grasp from
+       the visual observation.
+       
+    Args:
+        point_cloud_tf: A tensor of point cloud.
+        grasp_keypoint: The grasp point. The grasp will be
+            chosen near the grasp point.
+        num_points: The number of points in the point cloud.
+        num_samples: The number of grasp candidates produced
+            by the grasp generator (VAE).
+        dist_thres: The maximum allowed Chamfer distance 
+            between the point cloud and the predicted grasp.
+        dist_kp_thres: The maximum allowed distance between 
+            the grasp point and the predicted the grasp.
+        
+    Returns:
+        top_action: The predicted grasp with the highest score.
+        top_score: The score of the predicted grasp.
+    """
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -698,6 +738,29 @@ def forward_keypoint(point_cloud_tf,
                      dist_thres=0.4,
                      num_funct_vect=1,
                      funct_on_hull=True):
+    """A forward pass that predicts the keypoints from 
+       the visual observation.
+       
+    Args:
+        point_cloud_tf: A tensor of point cloud.
+        num_points: The number of points in the point cloud.
+        num_samples: The number of keypoint candidates 
+            produced by the keypoint generator.
+        dist_thres: The maximum allowed Chamfer distance 
+            between the keypoints and the point cloud.
+        num_funct_vect: The number of vectors pointing from
+            the function point to the effect point.
+        funct_on_hull: Whether the function point should on
+            the convex hull of the cluster centers of the 
+            point cloud.
+            
+    Returns:
+        top_keypoints: The predicted grasp point and function point.
+        top_funct_vect: The predicted vector pointing from the function point to
+            the effect point.
+        top_score: The score of the keypoints.
+    """
+
     point_cloud_tf = tf.reshape(
         point_cloud_tf, [1, num_points, 3])
     point_cloud = tf.tile(
@@ -762,44 +825,6 @@ def forward_keypoint(point_cloud_tf,
     return top_keypoints, top_funct_vect, top_score
 
 
-def forward_action(point_cloud_tf,
-                   num_points=1024,
-                   num_samples=256,
-                   dist_thres=0.3):
-    point_cloud_tf = tf.reshape(
-        point_cloud_tf, [1, num_points, 3])
-    point_cloud = tf.tile(
-        point_cloud_tf, [num_samples, 1, 1])
-    latent_var = tf.concat(
-        [tf.zeros([num_samples, 2], dtype=tf.float32),
-         tf.ones([num_samples, 2], dtype=tf.float32)],
-        axis=1)
-    actions_vae = ActionDecoder(
-    ).build_model(
-        tf.reshape(point_cloud, (-1, num_points, 1, 3)),
-        latent_var)
-
-    grasp = tf.reshape(actions_vae[0], [num_samples, 1, 3])
-    dist = tf.reduce_min(
-            tf.linalg.norm(grasp - point_cloud, axis=2), axis=1)
-    dist_min = tf.reduce_min(dist)
-
-    mask = tf.logical_or(
-        tf.less(dist, dist_thres),
-        tf.equal(dist, dist_min))
-    actions_vae = [tf.boolean_mask(a, mask, axis=0) for a in actions_vae]
-    point_cloud = tf.boolean_mask(point_cloud, mask, axis=0)
-
-    score = ActionDiscriminator().build_model(
-        tf.expand_dims(point_cloud, 2), actions_vae)
-
-    index = tf.argmax(tf.reshape(score, [-1]), 0)
-    top_score = score[index]
-    top_actions = [tf.expand_dims(a[index], 0) for a in actions_vae]
-
-    return top_actions, top_score
-
-
 def train_vae_grasp(data_path,
                     steps=60000,
                     batch_size=256,
@@ -810,6 +835,23 @@ def train_vae_grasp(data_path,
                     save_step=6000,
                     model_path=None,
                     optimizer='Adam'):
+    """Trains the VAE for grasp generation.
+    
+    Args:
+        data_path: The training data in a single h5df file.
+        steps: The total number of training steps.
+        batch_size: The training batch size.
+        eval_size: The evaluation batch size.
+        l2_weight: The L2 regularization weight.
+        log_step: The interval for logging.
+        eval_step: The interval for evaluation.
+        save_step: The interval for saving the model weights.
+        model_path: The pretrained model.
+        optimizer: Adam or SGDM.
+
+    Returns:
+        None.
+    """
     loader = GraspReader(data_path)
     graph = build_grasp_training_graph()
     pose_rot_train = graph['pose_rot']
@@ -891,6 +933,7 @@ def train_vae_grasp(data_path,
                                       vae_mmd, z_mean_np, z_std_np) +
                                   'dist: {:.3f}'.format(vae_dist))
             if step > 0 and step % save_step == 0:
+                makedir('./runs/vae')
                 saver.save(sess,
                            './runs/vae/vae_{}'.format(str(step).zfill(6)))
                 for index in range(pos_p_np.shape[0]):
@@ -943,6 +986,26 @@ def train_vae_keypoint(data_path,
                        model_path=None,
                        task_name='task',
                        optimizer='Adam'):
+    """Trains the VAE for keypoint generation.
+    
+    Args:
+        data_path: The training data in a single h5df file.
+        steps: The total number of training steps.
+        batch_size: The training batch size.
+        eval_size: The evaluation batch size.
+        l2_weight: The L2 regularization weight.
+        log_step: The interval for logging.
+        eval_step: The interval for evaluation.
+        save_step: The interval for saving the model weights.
+        model_path: The pretrained model.
+        task_name: The name of the task to be trained on. This
+            is only for distinguishing the name of log files and
+            the saved model.
+        optimizer: Adam or SGDM.
+
+    Returns:
+        None.
+    """
     loader = KeypointReader(data_path)
     num_funct_vect = loader.num_funct_vect
 
@@ -1040,120 +1103,9 @@ def train_vae_keypoint(data_path,
                                       vae_mmd, z_mean_np, z_std_np))
 
             if step > 0 and step % save_step == 0:
+                makedir('./runs/vae')
                 saver.save(sess,
                            './runs/vae/vae_keypoint_{}_{}'.format(
-                               task_name, str(step).zfill(6)))
-
-
-def train_vae_action(data_path,
-                     steps=120000,
-                     batch_size=256,
-                     eval_size=128,
-                     l2_weight=1e-6,
-                     log_step=20,
-                     eval_step=4000,
-                     save_step=1000,
-                     model_path=None,
-                     task_name='task',
-                     optimizer='Adam'):
-    loader = ActionReader(data_path)
-
-    graph = build_action_training_graph()
-    learning_rate = tf.placeholder(tf.float32, shape=())
-
-    point_cloud_tf = graph['point_cloud_tf']
-    grasp_point_tf = graph['grasp_point_tf']
-    translation_tf = graph['translation_tf']
-    rotation_tf = graph['rotation_tf']
-
-    loss_vae_grasp = graph['loss_vae_grasp']
-    loss_vae_trans = graph['loss_vae_trans']
-    loss_vae_rot = graph['loss_vae_rot']
-    loss_vae_mmd = graph['loss_vae_mmd'] * 0.005
-
-    z_mean = graph['z_mean']
-    z_std = graph['z_std']
-
-    std_gt_grasp = graph['std_gt_grasp']
-    std_gt_trans = graph['std_gt_trans']
-    std_gt_rot = graph['std_gt_rot']
-
-    weight_loss = [tf.nn.l2_loss(var) for var
-                   in tf.trainable_variables()]
-    weight_loss = tf.reduce_sum(weight_loss) * l2_weight
-
-    loss_vae = (loss_vae_grasp + loss_vae_trans +
-                loss_vae_rot + loss_vae_mmd)
-    loss = weight_loss + loss_vae
-
-    if optimizer == 'Adam':
-        train_op = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(loss)
-    elif optimizer == 'SGDM':
-        train_op = tf.train.MomentumOptimizer(
-            learning_rate=learning_rate,
-            momentum=0.9).minimize(loss)
-    else:
-        raise NotImplementedError
-
-    all_vars = tf.get_collection_ref(
-        tf.GraphKeys.GLOBAL_VARIABLES)
-    var_list_vae = [var for var in all_vars
-                    if 'vae_action' in var.name and
-                       'Momentum' not in var.name and
-                       'Adam' not in var.name]
-
-    saver = tf.train.Saver(var_list=var_list_vae)
-
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.allow_soft_placement = True
-
-    with tf.Session(config=config) as sess:
-        sess.run([tf.global_variables_initializer()])
-        if model_path:
-            running_log.write('vae_action_{}'.format(task_name),
-                              'loading model from {}'.format(model_path))
-            saver.restore(sess, model_path)
-
-        for step in range(steps + 1):
-            pos_p_np, pos_a_np = loader.sample_pos_train(batch_size)
-
-            pos_grasp_np, pos_trans_np, pos_rot_np = np.split(
-                pos_a_np, [3, 5], axis=1)
-            pos_rot_np = np.concatenate([np.cos(pos_rot_np),
-                                         np.sin(pos_rot_np)], axis=1)
-
-            feed_dict = {point_cloud_tf: pos_p_np,
-                         grasp_point_tf: pos_grasp_np,
-                         translation_tf: pos_trans_np,
-                         rotation_tf: pos_rot_np,
-                         learning_rate: get_learning_rate(step, steps)}
-
-            [_, loss_np, vae_grasp, vae_trans, vae_rot, vae_mmd, weight,
-             std_gt_grasp_np, std_gt_trans_np, std_gt_rot_np,
-             z_mean_np, z_std_np] = sess.run([
-                 train_op, loss, loss_vae_grasp,
-                 loss_vae_trans, loss_vae_rot, loss_vae_mmd,
-                 weight_loss, std_gt_grasp, std_gt_trans, std_gt_rot,
-                 z_mean, z_std],
-                feed_dict=feed_dict)
-
-            if step % log_step == 0:
-                running_log.write('vae_action_{}'.format(task_name),
-                                  'step: {}/{}, '.format(step, steps) +
-                                  'loss: {:.3f}, grasp: {:.3f}/{:.3f}, '.format(
-                                      loss_np, vae_grasp, std_gt_grasp_np) +
-                                  'trans: {:.3f}/{:.3f}, '.format(
-                                      vae_trans, std_gt_trans_np) +
-                                  'rot: {:.3f}/{:.3f}, '.format(
-                                      vae_rot, std_gt_rot_np) +
-                                  'mmd: {:.3f} ({:.3f} {:.3f}), '.format(
-                                      vae_mmd, z_mean_np, z_std_np))
-
-            if step > 0 and step % save_step == 0:
-                saver.save(sess,
-                           './runs/vae/vae_action_{}_{}'.format(
                                task_name, str(step).zfill(6)))
 
 
@@ -1168,6 +1120,24 @@ def train_gcnn_grasp(data_path,
                      model_path=None,
                      optimizer='SGDM',
                      lr_init=8e-4):
+    """Trains the grasp evaluation network.
+    
+    Args:
+        data_path: The training data in a single h5df file.
+        steps: The total number of training steps.
+        batch_size: The training batch size.
+        eval_size: The evaluation batch size.
+        l2_weight: The L2 regularization weight.
+        log_step: The interval for logging.
+        eval_step: The interval for evaluation.
+        save_step: The interval for saving the model weights.
+        model_path: The pretrained model.
+        optimizer: Adam or SGDM.
+        lr_init: The initial learning rate.
+
+    Returns:
+        None.
+    """
 
     loader = GraspReader(data_path)
     graph = build_grasp_training_graph()
@@ -1235,6 +1205,7 @@ def train_gcnn_grasp(data_path,
                                                                      acc_np))
 
             if step > 0 and step % save_step == 0:
+                makedir('./runs/gcnn')
                 saver.save(sess, './runs/gcnn/gcnn_{}'.format(
                     str(step).zfill(6)))
 
@@ -1269,6 +1240,23 @@ def train_gcnn_grasp(data_path,
 
 
 def load_samples(loader, batch_size, stage, noise_level=0.2):
+    """Load training and evaluation data.
+    
+    Args:
+        loader: The Reader instance.
+        batch_size: The batch size for training or evaluation.
+        stage: 'train' or 'val'.
+        noise_level: The noise to be added to the negative examples.
+
+    Returns:
+        p_np: A numpy array of point cloud.
+        grasp_np: A numpy array of grasp point.
+        funct_np: A numpy array of function point.
+        funct_vect_np: A numpy array of the vector pointing from the 
+            function point to the effect point.
+        label: The binary success label of the keypoints given the 
+            point cloud as visual observation.
+    """
     if stage == 'train':
         pos_p_np, pos_k_np = loader.sample_pos_train(batch_size // 2)
         neg_p_np, neg_k_np = loader.sample_neg_train(batch_size // 2)
@@ -1291,29 +1279,6 @@ def load_samples(loader, batch_size, stage, noise_level=0.2):
     return p_np, grasp_np, funct_np, funct_vect_np, label_np
 
 
-def load_samples_action(loader, batch_size, stage):
-    if stage == 'train':
-        pos_p_np, pos_a_np = loader.sample_pos_train(batch_size // 2)
-        neg_p_np, neg_a_np = loader.sample_neg_train(batch_size // 2)
-    elif stage == 'val':
-        pos_p_np, pos_a_np = loader.sample_pos_val(batch_size // 2)
-        neg_p_np, neg_a_np = loader.sample_neg_val(batch_size // 2)
-    else:
-        raise NotImplementedError
-
-    num_pos, num_neg = pos_p_np.shape[0], neg_p_np.shape[0]
-    label_np = np.concatenate(
-        [np.ones(shape=(num_pos, 1)),
-         np.zeros(shape=(num_neg, 1))],
-        axis=0).astype(np.float32)
-    p_np = np.concatenate([pos_p_np, neg_p_np], axis=0)
-    a_np = np.concatenate([pos_a_np, neg_a_np], axis=0)
-    grasp_np, trans_np, rot_np = np.split(
-        a_np, [3, 5], axis=1)
-    rot_np = np.concatenate([np.cos(rot_np), np.sin(rot_np)], axis=1)
-    return p_np, grasp_np, trans_np, rot_np, label_np
-
-
 def train_discr_keypoint(data_path,
                          steps=120000,
                          batch_size=128,
@@ -1325,6 +1290,26 @@ def train_discr_keypoint(data_path,
                          model_path=None,
                          task_name='task',
                          optimizer='Adam'):
+    """Trains the keypoint evaluation network.
+    
+    Args:
+        data_path: The training data in a single h5df file.
+        steps: The total number of training steps.
+        batch_size: The training batch size.
+        eval_size: The evaluation batch size.
+        l2_weight: The L2 regularization weight.
+        log_step: The interval for logging.
+        eval_step: The interval for evaluation.
+        save_step: The interval for saving the model weights.
+        model_path: The pretrained model.
+        task_name: The name of the task to be trained on. This
+            is only for distinguishing the name of log files and
+            the saved model.
+        optimizer: 'Adam' or 'SGDM'.
+
+    Returns:
+        None.
+    """
     loader = KeypointReader(data_path)
     num_funct_vect = loader.num_funct_vect
 
@@ -1399,6 +1384,7 @@ def train_discr_keypoint(data_path,
                                       loss_np, acc_np * 100))
 
             if step > 0 and step % save_step == 0:
+                makedir('./runs/discr')
                 saver.save(sess,
                            './runs/discr/discr_keypoint_{}_{}'.format(
                                task_name, str(step).zfill(6)))
@@ -1421,115 +1407,26 @@ def train_discr_keypoint(data_path,
                                           noise_level, acc_np * 100))
 
 
-def train_discr_action(data_path,
-                       steps=120000,
-                       batch_size=128,
-                       eval_size=128,
-                       l2_weight=1e-6,
-                       log_step=20,
-                       eval_step=1000,
-                       save_step=1000,
-                       model_path=None,
-                       task_name='task',
-                       optimizer='Adam'):
-    loader = ActionReader(data_path)
-
-    graph = build_action_training_graph()
-    learning_rate = tf.placeholder(tf.float32, shape=())
-
-    point_cloud_tf = graph['point_cloud_tf']
-    grasp_point_tf = graph['grasp_point_tf']
-    translation_tf = graph['translation_tf']
-    rotation_tf = graph['rotation_tf']
-
-    actions_label_tf = graph['actions_label_tf']
-    loss_discr = graph['loss_discr']
-    acc_discr = graph['acc_discr']
-
-    weight_loss = [tf.nn.l2_loss(var) for var
-                   in tf.trainable_variables()]
-    weight_loss = tf.reduce_sum(weight_loss) * l2_weight
-
-    loss = weight_loss + loss_discr
-
-    if optimizer == 'Adam':
-        train_op = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(loss)
-    elif optimizer == 'SGDM':
-        train_op = tf.train.MomentumOptimizer(
-            learning_rate=learning_rate,
-            momentum=0.9).minimize(loss)
-    else:
-        raise NotImplementedError
-
-    all_vars = tf.get_collection_ref(
-        tf.GraphKeys.GLOBAL_VARIABLES)
-    var_list_vae = [var for var in all_vars
-                    if 'action_discriminator' in var.name and
-                       'Momentum' not in var.name and
-                       'Adam' not in var.name]
-
-    saver = tf.train.Saver(var_list=var_list_vae)
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.allow_soft_placement = True
-
-    with tf.Session(config=config) as sess:
-        sess.run([tf.global_variables_initializer()])
-        if model_path:
-            running_log.write('discr_action_{}'.format(task_name),
-                              'loading model from {}'.format(model_path))
-            saver.restore(sess, model_path)
-
-        for step in range(steps + 1):
-            p_np, grasp_np, trans_np, rot_np, label_np = load_samples_action(
-                loader, batch_size, 'train')
-            feed_dict = {point_cloud_tf: p_np,
-                         grasp_point_tf: grasp_np,
-                         translation_tf: trans_np,
-                         rotation_tf: rot_np,
-                         actions_label_tf: label_np,
-                         learning_rate: get_learning_rate(step, steps)}
-
-            [_, loss_np, acc_np, weight
-             ] = sess.run([
-                 train_op, loss, acc_discr, weight_loss],
-                feed_dict=feed_dict)
-
-            if step % log_step == 0:
-                running_log.write('discr_action_{}'.format(task_name),
-                                  'step: {}/{}, '.format(step, steps) +
-                                  'loss: {:.3f}, acc: {:.3f}'.format(
-                                      loss_np, acc_np * 100))
-
-            if step > 0 and step % save_step == 0:
-                saver.save(sess,
-                           './runs/discr/discr_action_{}_{}'.format(
-                               task_name, str(step).zfill(6)))
-
-            if step > 0 and step % eval_step == 0:
-                for noise_level in [0.1, 0.2, 0.4, 0.8]:
-                    [p_np, grasp_np, trans_np,
-                        rot_np, label_np] = load_samples_action(
-                        loader, batch_size, 'train')
-                    feed_dict = {point_cloud_tf: p_np,
-                                 grasp_point_tf: grasp_np,
-                                 translation_tf: trans_np,
-                                 rotation_tf: rot_np,
-                                 actions_label_tf: label_np}
-
-                    [acc_np] = sess.run([acc_discr], feed_dict=feed_dict)
-                    running_log.write('discr_action_{}'.format(task_name),
-                                      'noise: {:.3f}, acc: {:.3f}'.format(
-                                          noise_level, acc_np * 100))
-
-
 def inference_grasp(data_path,
                     model_path,
                     batch_size=128,
                     score_thres=0.7,
                     dist_thres=0.2,
                     show_best=True):
+    """Predicts the grasps offline.
+    
+    Args:
+        data_path: The point cloud data in hdf5.
+        model_path: The pre-trained model.
+        batch_size: The batch size in inference.
+        score_thres: The minimum allowed score of the predicted grasps.
+        dist_thres: The maximum allowed Chamfer distance between the
+            grasp and the input point cloud.
+        show_best: Whether to only visualize the best predicted grasp.
+
+    Returns:
+        None.
+    """
     loader = GraspReader(data_path)
     graph = build_grasp_inference_graph(num_samples=batch_size)
     point_cloud_tf = graph['point_cloud_tf']
@@ -1582,6 +1479,17 @@ def inference_keypoint(data_path,
                        model_path,
                        batch_size=128,
                        num_points=1024):
+    """Predicts the keypoints offline.
+    
+    Args:
+        data_path: The point cloud data in hdf5.
+        model_path: The pre-trained model.
+        batch_size: The batch size in inference.
+        num_points: The points in a single frame of point cloud.
+
+    Returns:
+        None.
+    """
     loader = KeypointReader(data_path)
     point_cloud_tf = tf.placeholder(
         dtype=tf.float32, shape=[1, num_points, 3])

@@ -6,7 +6,6 @@ import gym
 import numpy as np
 
 import pybullet
-import time
 
 from robovat.envs import arm_env
 from robovat.envs.observations import camera_obs
@@ -84,7 +83,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
             self.graspable_pose = None
             self.all_graspable_paths = []
             self.graspable_index = 0
- 
+
             if is_training:
                 gpaths = self.config.SIM.GRASPABLE.PATHS
             else:
@@ -138,7 +137,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
         space_keypoints = gym.spaces.Box(
             low=low_keypoints,
             high=high_keypoints,
-            dtype=np.float32) 
+            dtype=np.float32)
 
         self.action_space = gym.spaces.Dict(
             {'grasp': space_grasp,
@@ -278,8 +277,6 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
 
                 elif phase == 'start':
                     pre_grasp_pose = np.array(self.graspable.pose.position)
-                    pre_grasp_euler = self.graspable.pose.euler
-
                     self.robot.move_to_gripper_pose(start, straight_line=True)
 
                     # Prevent problems caused by unrealistic frictions.
@@ -303,27 +300,27 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                     self.robot.move_to_gripper_pose(
                         postend,
                         straight_line=True, speed=1.0)
-                    post_grasp_euler = self.graspable.pose.euler
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            lateral_friction=1000,
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            lateral_friction=1000,
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.table.set_dynamics(
                             lateral_friction=1)
 
-                    self.simulator.wait_until_stable(self.graspable) 
+                    self.simulator.wait_until_stable(self.graspable)
                     self.grasp_success = self.simulator.check_contact(
-                           self.robot.arm,
-                           self.graspable)
+                        self.robot.arm,
+                        self.graspable)
 
-        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.04)
+        good_loc = self._good_grasp(
+            pre_grasp_pose, post_grasp_pose, thres=0.04)
         return good_loc
 
     def _execute_action_hammering(self, action):
@@ -348,13 +345,13 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
 
                 elif phase == 'prestart':
                     # move the tool based on action
-                    # self._draw_path(action)
                     num_move_steps = action.shape[0]
                     _, _, _, drz = action[0]
+                    drz = max(np.pi / 3, drz)
                     for step in range(1, num_move_steps):
                         error_orien = np.dot(
-                                self.graspable.pose.matrix3, 
-                                np.array([0, 0, 1]))[-1]
+                            self.graspable.pose.matrix3,
+                            np.array([0, 0, 1]))[-1]
                         if abs(error_orien) > 0.3:
                             if not self.is_training:
                                 self.grasp_cornercase = True
@@ -380,7 +377,7 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                         pose = Pose(
                             [[x, y, z],
                              [0, np.pi, angle]])
-                        # self.plot_pose(pose, 0.1)
+                
                         self.robot.move_to_gripper_pose(
                             pose, straight_line=True,
                             timeout=2,
@@ -391,22 +388,21 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
                             time_steps = time_steps + 1
                             if self.timeout:
                                 return
-                            if (time_steps > self.config.SIM.MAX_ACTION_STEPS 
+                            if (time_steps > self.config.SIM.MAX_ACTION_STEPS
                                     and step != num_move_steps - 1):
                                 self.timeout = True
                             if self.simulator:
                                 self.simulator.step()
                             ready = self.is_phase_ready(
                                 phase, num_action_steps)
-            
-                     
+
                 elif phase == 'start':
                     self._wait_until_ready(phase, num_action_steps)
 
-                    self.simulator.wait_until_stable(self.graspable) 
+                    self.simulator.wait_until_stable(self.graspable)
                     current_grasp_success = self.simulator.check_contact(
-                           self.robot.arm,
-                           self.graspable)
+                        self.robot.arm,
+                        self.graspable)
 
                     if self.grasp_success and not current_grasp_success:
                         self.grasp_cornercase = True
@@ -420,8 +416,8 @@ class HammerPointCloudEnv(arm_env.HammerArmEnv):
 
                     pre_task_target_pose = np.array(self.target.pose.position)
                     error_dist = np.linalg.norm(self.target_pose_init -
-                            pre_task_target_pose)
-                    if error_dist > 0.01:
+                                                pre_task_target_pose)
+                    if error_dist > 0.01 and self.is_training:
                         self.task_fail = True
                         return
 

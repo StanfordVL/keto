@@ -5,14 +5,14 @@ runs
 *.npy
 *.obj
 *.urdf
-*.png
-*.jpg
 *.hdf5
 *.pyc
 *.nfs*
 *.out
 *.json
+models
 data
+datagen
 outputs
 episodes
 log

@@ -1,12 +1,26 @@
+"""The evaluation networks."""
 import tensorflow as tf
 from cvae.sort import align
 from cvae.network import Network
 
 
 class GraspDiscriminator(Network):
+    """The grasp evaluation network."""
 
-    def build_model(self, x, g, keep_ratio=2,
+    def build_model(self, x, g,
                     aligned_point_cloud=False):
+        """Builds the model graph.
+
+        Args:
+            x: The point cloud tensor.
+            g: The grasp tensor.
+            aligned_point_cloud: Whether to return the
+                aligned point cloud.
+
+        Returns:
+            p: The grasp score.
+            aligned: The aligned point cloud.
+        """ 
         with tf.variable_scope('grasp_discriminator',
                                reuse=tf.AUTO_REUSE):
             x = tf.expand_dims(
@@ -38,8 +52,22 @@ class GraspDiscriminator(Network):
 
 
 class KeypointDiscriminator(Network):
+    """The keypoint evaluation network."""
 
     def build_model(self, x, ks, v=None):
+        """Builds the model graph.
+            
+        Args: 
+            x: The point cloud tensor.
+            ks: The list of keypoints.
+            v: The vector pointing from the function
+                point to the effect point.
+
+        Returns:
+            p: The keypoint evaluation score. A higher
+                score indicates a higher quality of the
+                predicted keypoints given the point cloud.
+        """
         with tf.variable_scope('keypoint_discriminator',
                                reuse=tf.AUTO_REUSE):
             g_kp, f_kp = [tf.squeeze(k, 1) for k in ks]
@@ -89,50 +117,6 @@ class KeypointDiscriminator(Network):
             p = self.fc_layer(x, 1, linear=True, name='out')
 
             return p
-
-
-class ActionDiscriminator(Network):
-
-    def build_model(self, x, ats):
-        with tf.variable_scope('action_discriminator',
-                               reuse=tf.AUTO_REUSE):
-            grasp, trans, rot = ats
-
-            x_g = x - tf.reshape(grasp, [-1, 1, 1, 3])
-
-            vx, vy = tf.split(rot, 2, axis=1)
-            rz = tf.atan2(vy, vx)
-            zero = tf.zeros_like(rz)
-            pose_t = tf.concat(
-                    [zero, zero, zero, zero, zero, rz], axis=1)
-            x_t = tf.expand_dims(
-                  align(tf.squeeze(x_g, 2), pose_t), 2)
-            x_t = x_t + tf.reshape(
-                    tf.concat([trans, zero], axis=1), [-1, 1, 1, 3])
-
-            x = tf.concat([x_g, x_t], axis=1)
-
-            x = self.conv_layer(x, 16, name='conv1_1')
-            x = self.conv_layer(x, 16, name='conv1_2')
-
-            x = self.conv_layer(x, 32, name='conv2_1')
-            x = self.conv_layer(x, 32, name='conv2_2')
-
-            x = self.conv_layer(x, 64, name='conv3_1')
-            x = self.conv_layer(x, 64, name='conv3_2')
-
-            x = self.conv_layer(x, 512, name='conv4_1')
-
-            x_g, x_t = tf.split(x, 2, axis=1)
-
-            x_g = tf.reduce_max(x_g, [1, 2], keepdims=False)
-            x_t = tf.reduce_max(x_t, [1, 2], keepdims=False)
-
-            x = tf.concat([x_g, x_t], axis=1)
-
-            x = self.fc_layer(x, 256, name='fc1')
-            x = self.fc_layer(x, 256, name='fc2')
-            p = self.fc_layer(x, 1, linear=True, name='out')
 
             return p
 

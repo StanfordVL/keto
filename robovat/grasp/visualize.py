@@ -5,10 +5,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-try:
-    import matplotlib.pyplot as plt
-except Exception:
-    print('Warning: Failed to import matplotlib.pyplot')
+import matplotlib.pyplot as plt
 
 import cv2
 import numpy as np

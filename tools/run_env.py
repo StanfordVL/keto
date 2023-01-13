@@ -222,6 +222,7 @@ def main():
                                  output_dir=args.output_dir,
                                  num_entries_per_file=500)
             ]
+            
         else:
             observers = []
 

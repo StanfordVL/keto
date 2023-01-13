@@ -1,4 +1,4 @@
-"""Grasping policies."""
+"""Pushing policies."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -20,7 +20,8 @@ nest = tf.contrib.framework.nest
 
 
 class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
-
+    """Predicts the pushing actions from point cloud"""
+    
     TARGET_REGION = {
         'x': 0.2,
         'y': 0.1,
@@ -40,6 +41,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                  config=None,
                  debug=False,
                  is_training=True):
+        """Initialization"""
 
         super(PushPointCloudPolicy, self).__init__(
             time_step_spec,
@@ -53,6 +55,7 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         self.is_training = is_training
 
     def _concat_actions(self, actions, num_dof=4):
+        """Concatenates the tool pose for each step."""
         actions = tf.expand_dims(
             tf.concat(
                 [tf.reshape(action, [-1, num_dof])
@@ -61,6 +64,15 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return actions
 
     def _rot_mat(self, rz):
+        """Computes the rotation matrix around the z axis.
+
+        Args:
+            rz: The rotation around z axis.
+
+        Returns:
+            mat: The rotation matrix.
+
+        """
         zero = tf.constant(0.0,
                            dtype=tf.float32)
         one = tf.constant(1.0,
@@ -73,6 +85,16 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return mat
 
     def _keypoints_heuristic(self, point_cloud_tf):
+        """Uses the heuristic policy to predict keypoints.
+        
+        Args:
+            point_cloud_tf: The point cloud tensor.
+            
+        Returns:
+            g_kp: The grasp point.
+            f_kp: The function point.
+            f_v: The vector pointing from the function point to effect point.
+        """
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using heuristic policy')
 
@@ -82,6 +104,18 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         return g_kp, f_kp, f_v
 
     def _keypoints_network(self, point_cloud_tf, scale=20):
+        """Uses the neural network policy to predict keypoints.
+        
+        Args:
+            point_cloud_tf: The point cloud tensor.
+            scale: A constant coefficient that the point cloud coordinates 
+                should be multiplied with to fit the input scale of the network.
+            
+        Returns:
+            g_kp: The grasp point.
+            f_kp: The function point.
+            f_v: The vector pointing from the function point to effect point.
+        """
         point_cloud_tf = tf.Print(
                 point_cloud_tf, [], message='Using network policy')
         keypoints, f_v, _ = forward_keypoint(
@@ -98,12 +132,22 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
                 policy_state,
                 seed, 
                 scale=20):
+        """Predicts the actions from visual observation.
+        
+        Args:
+            time_step: A batch of timesteps.
+            policy_state: The current policy state.
+            seed: A random seed.
+            scale: A constant coefficient that the point cloud coordinates 
+                should be multiplied with to fit the input scale of the network.
+
+        Returns:
+            The grasp, action waypoints and the keypoints.
+        """
         point_cloud_tf = time_step.observation['point_cloud']
         
         if self.is_training:
-            g_kp, f_kp, f_v = tf.cond(tf.random.uniform(shape=()) < 0.8,
-                    lambda: self._keypoints_heuristic(point_cloud_tf),
-                    lambda: self._keypoints_network(point_cloud_tf))
+            g_kp, f_kp, f_v = self._keypoints_heuristic(point_cloud_tf)
         else:
             g_kp, f_kp, f_v = self._keypoints_network(point_cloud_tf)
 
@@ -151,8 +195,12 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
         target_force = tf.concat([
             force, tf.constant([0, 0], dtype=tf.float32)], axis=0)
 
+        pre_overhead_pose = tf.concat([
+            g_xy, tf.constant([0.40], dtype=tf.float32),
+            [g_rz]],
+            axis=0)
         overhead_pose = tf.concat([
-            g_xy - force * 0.18, tf.constant([0.40], dtype=tf.float32),
+            g_xy - force * 0.12, tf.constant([0.40], dtype=tf.float32),
             [g_rz]],
             axis=0)
         pre_target_pose = tf.concat([
@@ -165,7 +213,8 @@ class PushPointCloudPolicy(point_cloud_policy.PointCloudPolicy):
             axis=0)
 
         action_task = self._concat_actions(
-            [target_force, overhead_pose, pre_target_pose, target_pose])
+            [target_force, pre_overhead_pose,
+                overhead_pose, pre_target_pose, target_pose])
 
         action = {'grasp': action_4dof,
                   'task': action_task,

@@ -1,3 +1,4 @@
+"""Visualizes the point cloud and keypoints stored in npy files."""
 import os
 import argparse
 import numpy as np

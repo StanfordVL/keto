@@ -1,4 +1,4 @@
-"""Policy with Cross-Entropy Method ."""
+"""Policy with the Point Cloud Based Neural Network Method ."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -14,12 +14,21 @@ nest = tf.contrib.framework.nest
 tfd = tfp.distributions
 
 class PointCloudPolicy(tf_policy.Base):
-
+    """Policy using the Point Cloud Based Neural Network."""
     def __init__(self, 
                  time_step_spec=None,
                  action_spec=None,
                  config=None):
+        """Initialization.
 
+        Args:
+            time_step_spec: A `TimeStep` spec of the expected time_steps.
+            action_spec: A nest of BoundedTensorSpec representing the actions.
+            
+        Raises:
+            NotImplementedError: If `action_spec` contains more than one
+                `BoundedTensorSpec`.
+        """
         self.config = config
         super(PointCloudPolicy, self).__init__(
                 time_step_spec,

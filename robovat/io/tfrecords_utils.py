@@ -110,63 +110,17 @@ class TrajectoryWriter(object):
             os.makedirs(output_dir)
 
     def __call__(self, trajectory):
-        # Create a file for saving the episode data.
-        if self._num_entries_this_file == 0:
-            if self._use_random_name:
-                timestamp = time_utils.get_timestamp_as_string()
-            else:
-                timestamp = '%06d' % (self._num_files)
-            filename = 'episodes_%s.tfrecords' % (timestamp)
-            self._output_path = os.path.join(self._output_dir, filename)
-            self._num_files += 1
-            if self._writer:
-                self._writer.close()
-            self._writer = tf.python_io.TFRecordWriter(self._output_path)
-
-        # Append the episode to the file.
-        logger.info('Saving trajectory to file %s (%d / %d)...',
-                    self._output_path,
-                    self._num_entries_this_file,
-                    self._num_entries_per_file)
-        num_entries = self.write(trajectory)
-
-        # Update the cursor.
-        self._num_entries_this_file += num_entries
-        self._num_entries_this_file %= self._num_entries_per_file
+        self.write(trajectory)
         self._num_calls = self._num_calls + 1
+        return
 
     def write(self, trajectory):
-        """Write a string record to the file."""
-        data, extra_data = self._problem.convert_trajectory(trajectory)
-
-        if not isinstance(data, list):
-            data = [data]
-
-        for entry in data:
-            self._write_data(entry)
+        """Write a record to the file."""
+        _, extra_data = self._problem.convert_trajectory(trajectory)
 
         if extra_data:
             self._write_extra_data(extra_data)
-
-        return len(data)
-
-    def _write_data(self, data):
-        feature = dict()
-        
-        for name, spec in self._spec.items():
-            element = data[name]
-            if isinstance(spec, OrderedDict):
-                for sub_key, sub_spec in spec.items():
-                    sub_name = '%s/%s' % (name, sub_key)
-                    write_feature(feature, sub_name, sub_spec, element[sub_key])
-            else:
-                write_feature(feature, name, spec, element)
-
-        example = tf.train.Example(
-                features=tf.train.Features(feature=feature))
-        serialized = example.SerializeToString()
-        self._writer.write(serialized)
-        self._writer.flush()
+        return
 
     def _write_extra_data(self, data):
         for name in data.keys():
@@ -188,73 +142,3 @@ class TrajectoryWriter(object):
         if self._writer is not None:
             self._writer.close()
 
-
-class TrajectoryReader(object):
-    """Read trajectories from TFRecord files."""
-
-    def __init__(self,
-                 problem,
-                 filename,
-                 num_epochs=None):
-        self._problem = problem
-        self._filename_queue = tf.train.string_input_producer(
-                [filename], num_epochs=num_epochs)
-        self._reader = tf.TFRecordReader(filename)
-
-        self._spec = problem.spec
-
-        self._keys_to_features = dict()
-        for name, spec in self._spec.items():
-            if isinstance(spec, OrderedDict):
-                for sub_key, sub_spec in spec.items():
-                    sub_name = '%s/%s' % (name, sub_key)
-                    parse_feature(self._keys_to_features, sub_name, sub_spec)
-            else:
-                parse_feature(self._keys_to_features, name, spec)
-
-    def read(self):
-        """Read a string record from the file.
-
-        Returns:
-            features: A dictionary of feature tensors.
-        """
-        _, serialized_example = self._reader.read(self._filename_queue)
-
-        # Parse features.
-        parsed_features = tf.parse_single_example(  
-                serialized_example, features=self._keys_to_features)  
-        features = dict()
-
-        for name, spec in self._spec.items():
-            if isinstance(spec, OrderedDict):
-                for sub_key, sub_spec in spec.items():
-                    sub_name = '%s/%s' % (name, sub_key)
-                    decode_feature(
-                        parsed_features, features, sub_name, sub_spec)
-            else:
-                decode_feature(parsed_features, features, name, spec)
-
-        # Observation.
-        observation = OrderedDict()
-        for name, feature in features.items():
-            if 'observation/' == name[:12]:
-                observation[name[12:]] = feature
-        if len(observation) == 0:
-            observation = features['observation']
-        
-        # Action.
-        action = OrderedDict()
-        for name, feature in features.items():
-            if 'action/' == name[:7]:
-                action[name[7:]] = feature
-        if len(action) == 0:
-            action = features['action']
-
-        return Trajectory(
-            step_type=None,
-            observation=observation,
-            action=action,
-            policy_info=None,
-            next_step_type=None,
-            reward=features['reward'],
-            discount=features['discount'])

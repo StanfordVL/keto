@@ -6,7 +6,6 @@ import gym
 import numpy as np
 
 import pybullet
-import time
 
 from robovat.envs import arm_env
 from robovat.envs.observations import camera_obs
@@ -76,7 +75,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                 name='push_reward',
                 graspable_name=GRASPABLE_NAME,
                 target_name=['target_{}'.format(index) for index in
-                    range(self.config.TASK_LEVEL)])
+                             range(self.config.TASK_LEVEL)])
         ]
 
         if self.simulator:
@@ -139,7 +138,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
         space_keypoints = gym.spaces.Box(
             low=low_keypoints,
             high=high_keypoints,
-            dtype=np.float32) 
+            dtype=np.float32)
 
         self.action_space = gym.spaces.Dict(
             {'grasp': space_grasp,
@@ -272,11 +271,9 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
 
                 elif phase == 'start':
                     pre_grasp_pose = np.array(self.graspable.pose.position)
-                    pre_grasp_euler = self.graspable.pose.euler
-
                     self.robot.move_to_gripper_pose(
-                            start, 
-                            straight_line=True, speed=1.2)
+                        start,
+                        straight_line=True, speed=1.2)
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
@@ -299,21 +296,21 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                     self.robot.move_to_gripper_pose(
                         postend,
                         straight_line=True, speed=1.2)
-                    post_grasp_euler = self.graspable.pose.euler
 
                     # Prevent problems caused by unrealistic frictions.
                     if self.simulator:
                         self.robot.l_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            lateral_friction=1000,
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.robot.r_finger_tip.set_dynamics(
-                            lateral_friction=100,
-                            rolling_friction=100,
-                            spinning_friction=1000)
+                            lateral_friction=1000,
+                            rolling_friction=0,
+                            spinning_friction=0)
                         self.table.set_dynamics(
-                            lateral_friction=0.8 if self.is_training else 0.8)
-        good_loc = self._good_grasp(pre_grasp_pose, post_grasp_pose, thres=0.04)
+                            lateral_friction=0.8)
+        good_loc = self._good_grasp(
+            pre_grasp_pose, post_grasp_pose, thres=0.04)
         return good_loc
 
     def _execute_action_pushing(self, action):
@@ -343,8 +340,8 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
 
                     for step in range(1, num_move_steps):
                         error_orien = np.dot(
-                                self.graspable.pose.matrix3, 
-                                np.array([0, 0, 1]))[-1]
+                            self.graspable.pose.matrix3,
+                            np.array([0, 0, 1]))[-1]
                         if abs(error_orien) > 0.4:
                             if self.is_training:
                                 self.grasp_cornercase = True
@@ -391,7 +388,7 @@ class PushPointCloudEnv(arm_env.PushArmEnv):
                                 phase, num_action_steps)
 
                 elif phase == 'start':
-                    pass 
+                    pass
 
                 elif phase == 'end':
                     pass
